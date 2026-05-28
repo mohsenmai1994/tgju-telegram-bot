@@ -132,4 +132,29 @@ class TGJUScraper:
         lines.extend([
             "",
             self._extract_persian_timestamp(),
-            f"ID: {self.CH
+            f"ID: {self.CHANNEL_HANDLE}",
+        ])
+
+        return "\n".join(lines)
+
+    def run(self) -> str:
+        """
+        Opens the target website, extracts all required data,
+        stores the result in market_log.txt, and returns the message.
+        """
+        try:
+            self.logger.info("Opening target URL: %s", self.TARGET_URL)
+            self.driver.get(self.TARGET_URL)
+            self.driver.implicitly_wait(10)
+
+            message = self._build_report()
+            self.FILE_PATH.write_text(message, encoding="utf-8")
+
+            self.logger.info("Market report saved to %s", self.FILE_PATH)
+            return message
+
+        finally:
+            try:
+                self.driver.quit()
+            except Exception:
+                pass
