@@ -42,7 +42,7 @@ class __webdriver__(webdriver.Chrome):
         self.set_window_size(2560, 1440)
 
     # ... بقیه متدهای find_element و read_text بدون تغییر باقی بمانند ...
-    def find_element(self, by, value=None, timeout=15):
+    def find_element(self, by, value=None, timeout=5):
         start = time.time()
         last_exception = None
         while True:
@@ -53,7 +53,7 @@ class __webdriver__(webdriver.Chrome):
                 last_exception = e
                 if time.time() - start >= timeout:
                     raise last_exception
-                time.sleep(2)
+                time.sleep(0.05)
 
     def get(self, url: str, timeout=15):
         try:
