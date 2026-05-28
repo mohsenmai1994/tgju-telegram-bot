@@ -104,11 +104,3 @@ class TGJUScraper:
         except Exception as e:
             logger.error(f"Scraper error: {e}")
             return None
-
-if __name__ == "__main__":
-    browser = __webdriver__()
-    try:
-        scraper = TGJUScraper(browser)
-        print(scraper.run())
-    finally:
-        browser.quit()
