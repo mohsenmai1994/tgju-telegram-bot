@@ -53,7 +53,7 @@ class __webdriver__(webdriver.Chrome):
                 last_exception = e
                 if time.time() - start >= timeout:
                     raise last_exception
-                time.sleep(0.05)
+                time.sleep(2)
 
     def get(self, url: str, timeout=15):
         try:
