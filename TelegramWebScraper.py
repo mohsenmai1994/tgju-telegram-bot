@@ -52,10 +52,10 @@ class TGJUScraper:
         ]
 
         coins: List[tuple[str, str]] = [
-            ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[2]/td[1]"),
-            ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[3]/td[1]"),
-            ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[4]/td[1]"),
-            ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[5]/td[1]"),
+            ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[2]/td[1]"),
+            ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[3]/td[1]"),
+            ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[4]/td[1]"),
+            ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[5]/td[1]"),
         ]
 
         golds: List[tuple[str, str, str]] = [
@@ -65,8 +65,8 @@ class TGJUScraper:
             ("✴️ طلای دست دوم", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[3]/td[1]", "ریال"),
         ]
 
-        tether_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
-        bitcoin_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
+        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
+        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین"]
 
