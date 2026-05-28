@@ -1,138 +1,124 @@
-import time
-import os
+from __future__ import annotations
+
+import logging
 from pathlib import Path
-from typing import Final
-from selenium import webdriver
+from typing import Final, List, Optional
+
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service as ChromeService
-import num2words
+from Scraper import __webdriver__
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+# Configure logger
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("TGJU_Scraper")
 
-# =============================================================================
-# Filesystem Path Resolution
-# =============================================================================
-# Using Path.cwd() (Current Working Directory) ensures the script remains 
-# environment-agnostic. This resolves paths dynamically whether on Windows, 
-# Linux, or cloud-synchronized environments like Proton Drive.
 
-BASE_DIR: Final[Path] = Path(__file__).parent
+class TGJUScraper:
+    # Target website and output configuration
+    TARGET_URL: Final[str] = "https://bv.emofid.com/market/currency"
+    BASE_DIR: Final[Path] = Path(__file__).parent
+    FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
+    CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
 
-CHROMEDRIVER_EXECUTABLE_PATH: Final[Path] = BASE_DIR / "chromedriver.exe"
+    def __init__(self, driver) -> None:
+        self.driver = driver
 
-class __webdriver__(webdriver.Chrome):
-    def __init__(self, options=None, service=None, keep_alive=True):
-        if service is None:
+    def build_report(self) -> str:
+        """
+        Extract market data from the page directly without helper methods.
+        If an element is missing, it defaults to '-'.
+        """
+        # Read market update time from the header
+        try:
+            market_time_el = self.driver.find_element(By.XPATH, "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span")
+            market_time = market_time_el.text.strip() if market_time_el.text.strip() else "N/A"
+        except Exception:
+            market_time = "N/A"
+
+        # Currency values
+        currencies: List[tuple[str, str]] = [
+            ("☸️ دلار آمريکا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]"),
+            ("☸️ یورو", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[2]/div[3]/div[1]"),
+            ("☸️ پوند انگلیس", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[4]/div[3]/div[1]"),
+            ("☸️ لیر ترکیه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
+            ("☸️ فرانک سوئیس", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[10]/div[3]/div[1]"),
+            ("☸️ یوان چین", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
+            ("☸️ ین ژاپن", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[7]/div[3]/div[1]"),
+            ]
+
+        # Coin values
+        coins: List[tuple[str, str]] = [
+            ("✴️ سکه بهار آزادی", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[3]/div[3]/div[1]"),
+            ("✴️ نیم سکه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[4]/div[3]/div[1]"),
+            ("✴️ ربع سکه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[5]/div[3]/div[1]"),
+            ("✴️ سکه گرمی", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
+        ]
+
+        # Gold and ounce values
+        golds: List[tuple[str, str, str]] = [
+            ("✴️ انس طلا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]", "دلار"),
+            ("✴️ طلای 18 عیار", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[7]/div[3]/div[1]", "ریال"),
+        ]
+
+        lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
+
+        # Extract currencies
+        for label, xpath in currencies:
             try:
-                service = ChromeService(executable_path=CHROMEDRIVER_EXECUTABLE_PATH, log_output=os.devnull)
-            except TypeError:
-                service = ChromeService(executable_path=CHROMEDRIVER_EXECUTABLE_PATH)
-                try:
-                    service.log_path = os.devnull
-                except Exception:
-                    pass
+                val = self.driver.find_element(By.XPATH, xpath).text.strip()
+                lines.append(f"{label}: {val if val else '-'} ریال")
+            except Exception:
+                lines.append(f"{label}: - ریال")
 
-        if options is None:
-            options = webdriver.ChromeOptions()
-            options.add_argument("--incognito")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-popup-blocking")
-            options.add_experimental_option(
-                "prefs", {"profile.default_content_setting_values.notifications": 2}
-            )
-            options.add_argument(f"--user-agent={USER_AGENT}")
-            options.add_argument("--mute-audio")
+        self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[2]").click()
 
-            options.add_argument("--log-level=3")
-            options.add_argument("--silent")
-            options.add_argument("--disable-logging")
-            options.add_argument("--disable-background-networking")
-            options.add_argument("--disable-sync")
-            options.add_argument("--no-first-run")
-            options.add_argument("--no-default-browser-check")
-
-            options.add_experimental_option("excludeSwitches", ["enable-logging", "enable-automation"])
-            options.add_experimental_option("useAutomationExtension", False)
-
-            options.add_argument("--headless=new")
-            options.add_argument("--window-size=2560,1440")
-            options.add_argument("--force-device-scale-factor=1")
-            options.add_argument("--high-dpi-support=1")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--no-sandbox")
-
-        super().__init__(options=options, service=service, keep_alive=keep_alive)
-
-        self.set_window_size(2560, 1440)
-
-    def find_element(self, by, value=None, timeout=5):
-        start = time.time()
-        last_exception = None
-        while True:
+        # Extract coins
+        for label, xpath in coins:
             try:
-                element = super().find_element(by, value)
-                try:
-                    self.execute_script(
-                        "arguments[0].scrollIntoView({block:'center', inline:'center'});",
-                        element
-                    )
-                except Exception:
-                    pass
-                return element
-            except Exception as e:
-                last_exception = e
-                if time.time() - start >= timeout:
-                    raise last_exception
-                time.sleep(0.05)
+                val = self.driver.find_element(By.XPATH, xpath).text.strip()
+                lines.append(f"{label}: {val if val else '-'} ریال")
+            except Exception:
+                lines.append(f"{label}: - ریال")
 
-    def get(self, url: str, timeout=15):
-        start = time.time()
-        last_exception = None
-        while True:
+        # Extract gold
+        for label, xpath, unit in golds:
             try:
-                super().get(url)
-                end = time.time() + timeout
-                while time.time() < end:
-                    try:
-                        if self.execute_script("return document.readyState") == "complete":
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.05)
-                return
-            except Exception as e:
-                last_exception = e
-                if time.time() - start >= timeout:
-                    raise last_exception
-                time.sleep(0.1)
+                val = self.driver.find_element(By.XPATH, xpath).text.strip()
+                lines.append(f"{label}: {val if val else '-'} {unit}")
+            except Exception:
+                lines.append(f"{label}: - {unit}")
+  
+        self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[3]").click()
+        
+        # Extract bitcoin
+        
+        
+        try:
+            btc_val = self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]").text.strip()
+            lines.append(f"✴️ بیت کوین: {btc_val if btc_val else '-'} دلار")
+        except Exception:
+            lines.append("✴️ بیت کوین: - دلار")
 
-    def read_text(self, by, value=None, timeout=5):
-        el = self.find_element(by, value, timeout=timeout)
 
-        end = time.time() + timeout
-        while time.time() < end:
-            txt = self.execute_script(
-                "return (arguments[0].innerText || arguments[0].textContent || '').trim();",
-                el
-            )
-            if txt:
-                return txt
 
-            val = el.get_attribute("value")
-            if val and val.strip():
-                return val.strip()
+        lines.append(f"\n🆔 {self.CHANNEL_HANDLE}")
+        return "\n".join(lines)
 
-            aria = el.get_attribute("aria-label")
-            if aria and aria.strip():
-                return aria.strip()
+    def run(self) -> Optional[str]:
+        """
+        Open target page and build report immediately.
+        """
+        try:
+            self.driver.get(self.TARGET_URL)
+            return self.build_report()
+        except Exception as exc:
+            logger.exception("Scraper failed: %s", exc)
+            return None
 
-            pseudo = self.execute_script(
-                "return (getComputedStyle(arguments[0],'::before').content || '').replace(/^\"|\"$/g,'');",
-                el
-            )
-            if pseudo and pseudo != "none":
-                return pseudo
+browser = __webdriver__()
+scraper = TGJUScraper(browser)
+content = scraper.run()
 
-            time.sleep(0.05)
-
-        return ""
+print(content)
