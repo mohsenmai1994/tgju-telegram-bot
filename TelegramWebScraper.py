@@ -53,24 +53,24 @@ class TGJUScraper:
 
         # coins
         coins = [
-            ("✴️ سکه امامی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[1]/td[1]"),
+            ("✴️ سکه امامی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[1]/td[1]"),
             ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[2]/td[1]"),
-            ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[3]/td[1]"),
-            ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[4]/td[1]"),
-            ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[5]/td[1]"),
+            ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[3]/td[1]"),
+            ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[4]/td[1]"),
+            ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[5]/td[1]"),
         ]
 
         # gold
         golds = [
-            ("✴️ انس طلا", "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]", "دلار"),
-            ("✴️ طلای 18 عیار", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[1]/td[1]", "ریال"),
+            ("✴️ انس طلا", "/html/body/main/div[1]/div[2]/div/ul/li[2]/span[1]/span", "دلار"),
+            ("✴️ طلای 18 عیار", "/html/body/main/div[1]/div[2]/div/ul/li[4]/span[1]/span", "ریال"),
             ("✴️ طلای 24 عیار", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[2]/td[1]", "ریال"),
             ("✴️ طلای دست دوم", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[3]/td[1]", "ریال"),
         ]
 
         # crypto / dollar
-        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
-        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
+        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[2]"
+        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[1]"
 
         lines = []
         lines.append("#نرخ_ارز #سکه #طلا #دلار #بیتکوین")
