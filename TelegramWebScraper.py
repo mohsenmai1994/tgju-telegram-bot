@@ -69,8 +69,8 @@ class TGJUScraper:
         ]
 
         # crypto / dollar
-        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[2]"
-        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[1]"
+        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
+        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
 
         lines = []
         lines.append("#نرخ_ارز #سکه #طلا #دلار #بیتکوین")
@@ -115,3 +115,12 @@ class TGJUScraper:
         except Exception as exc:
             logger.exception(f"Scraper failed: {exc}")
             return None
+
+
+if __name__ == "__main__":
+    browser = __webdriver__()
+    try:
+        scraper = TGJUScraper(browser)
+        print(scraper.run())
+    finally:
+        browser.quit()
