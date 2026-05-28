@@ -1,20 +1,20 @@
+from __future__ import annotations
+
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Final, List
+from typing import Final, List, Optional
 
 import pytz
+from selenium.webdriver.common.by import By
 
 from Scraper import __webdriver__
 
 
 @dataclass(frozen=True)
 class AssetMetadata:
-    """
-    Represents a single market asset with its extraction selector
-    and display configuration.
-    """
     name: str
     xpath: str
     unit: str
@@ -23,8 +23,10 @@ class AssetMetadata:
 
 class TGJUScraper:
     """
-    Extracts market data from TGJU and writes the formatted result
-    to a local text file for downstream Telegram delivery.
+    TGJU market data scraper.
+
+    Receives an already-created browser driver and extracts market values
+    from TGJU using XPath selectors, then writes the final report to a file.
     """
 
     TARGET_URL: Final[str] = "https://www.tgju.org/"
@@ -32,10 +34,8 @@ class TGJUScraper:
     FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
     CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
 
-    # Asset catalog ordered exactly as intended for Telegram output.
     ASSETS: Final[List[AssetMetadata]] = [
-        # Foreign exchange instruments
-        AssetMetadata("دلار آمريکا", '//*[@id="l-price_dollar_rl"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("دلار آمریکا", '//*[@id="l-price_dollar_rl"]/span[1]', "ریال", "☸️"),
         AssetMetadata("یورو", '//*[@id="l-price_eur"]/span[1]', "ریال", "☸️"),
         AssetMetadata("درهم امارات", '//*[@id="l-price_aed"]/span[1]', "ریال", "☸️"),
         AssetMetadata("پوند انگلیس", '//*[@id="l-price_gbp"]/span[1]', "ریال", "☸️"),
@@ -43,12 +43,9 @@ class TGJUScraper:
         AssetMetadata("فرانک سوئیس", '//*[@id="l-price_chf"]/span[1]', "ریال", "☸️"),
         AssetMetadata("یوان چین", '//*[@id="l-price_cny"]/span[1]', "ریال", "☸️"),
         AssetMetadata("ین ژاپن", '//*[@id="l-price_jpy"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("وون کره جنوبی", '//*[@id="l-price_krw"]/span[1]', "ریال", "☸️"),
         AssetMetadata("دلار کانادا", '//*[@id="l-price_cad"]/span[1]', "ریال", "☸️"),
         AssetMetadata("دلار استرالیا", '//*[@id="l-price_aud"]/span[1]', "ریال", "☸️"),
         AssetMetadata("دلار نیوزلند", '//*[@id="l-price_nzd"]/span[1]', "ریال", "☸️"),
-
-        # Gold, coin, and digital assets
         AssetMetadata("سکه امامی", '//*[@id="l-coin_sekee"]/span[1]', "ریال", "✴️"),
         AssetMetadata("سکه بهار آزادی", '//*[@id="l-price_bahar"]/span[1]', "ریال", "✴️"),
         AssetMetadata("نیم سکه", '//*[@id="l-coin_nim"]/span[1]', "ریال", "✴️"),
@@ -62,30 +59,36 @@ class TGJUScraper:
         AssetMetadata("بیت کوین", '//*[@id="l-crypto-bitcoin"]/span[1]', "دلار", "✴️"),
     ]
 
-    def __init__(self) -> None:
-        """Initializes the scraper with a browser driver instance."""
+    def __init__(self, driver) -> None:
+        self.driver = driver
         self.logger = logging.getLogger(__name__)
-        self.driver = __webdriver__()
+        self._page_text: str = ""
 
-    def _extract_price(self, xpath: str) -> str:
-        """
-        Reads the text content of a target element.
-        Returns a placeholder if the element is not available.
-        """
+    def _normalize_text(self, text: str) -> str:
+        if not text:
+            return "-"
+        text = text.strip()
+        text = re.sub(r"\s+", " ", text)
+        return text
+
+    def _extract_text_by_xpath(self, xpath: str) -> str:
         try:
-            value = self.driver.read_text(xpath)
-            return value.strip() if value else "-"
+            element = self.driver.find_element(By.XPATH, xpath)
+            value = element.text or element.get_attribute("textContent") or "-"
+            return self._normalize_text(value)
         except Exception as exc:
-            self.logger.warning("Failed to extract XPath %s: %s", xpath, exc)
+            self.logger.warning("XPath extract failed for %s: %s", xpath, exc)
             return "-"
 
-    def _extract_persian_timestamp(self) -> str:
-        """
-        Builds a Tehran-local timestamp string.
-        Note: this is a Persian-language formatted timestamp, not a Jalali conversion.
-        """
-        tehran_tz = pytz.timezone("Asia/Tehran")
-        now = datetime.now(tehran_tz)
+    def _extract_numeric_value(self, text: str) -> str:
+        if not text:
+            return "-"
+        match = re.search(r"[\d,]+(?:\.\d+)?", text)
+        return match.group(0) if match else text
+
+    def _extract_tehran_timestamp(self) -> str:
+        tz = pytz.timezone("Asia/Tehran")
+        now = datetime.now(tz)
 
         weekdays = {
             0: "دوشنبه",
@@ -112,49 +115,46 @@ class TGJUScraper:
             12: "دسامبر",
         }
 
-        weekday_name = weekdays[now.weekday()]
-        month_name = months[now.month]
-        return f"{weekday_name} {now.day} {month_name} - {now.strftime('%H:%M:%S')}"
+        return f"{weekdays[now.weekday()]} {now.day} {months[now.month]} - {now.strftime('%H:%M:%S')}"
 
-    def _build_report(self) -> str:
-        """
-        Creates the final Telegram-ready message using the requested layout.
-        """
+    def _build_message(self) -> str:
         lines: List[str] = [
-            "#نرخ_ارز #سکه #طلا #دلار #بیتکوین",
-            ""
+            "#نرخ_ارز #سکه #طلا #بیتکوین",
+            "",
         ]
 
         for asset in self.ASSETS:
-            value = self._extract_price(asset.xpath)
+            raw_value = self._extract_text_by_xpath(asset.xpath)
+            value = self._extract_numeric_value(raw_value)
             lines.append(f"{asset.symbol} {asset.name}: {value} {asset.unit}")
 
         lines.extend([
             "",
-            self._extract_persian_timestamp(),
+            self._extract_tehran_timestamp(),
             f"ID: {self.CHANNEL_HANDLE}",
         ])
 
         return "\n".join(lines)
 
     def run(self) -> str:
-        """
-        Opens the target website, extracts all required data,
-        stores the result in market_log.txt, and returns the message.
-        """
         try:
-            self.logger.info("Opening target URL: %s", self.TARGET_URL)
+            self.logger.info("Opening TGJU: %s", self.TARGET_URL)
             self.driver.get(self.TARGET_URL)
-            self.driver.implicitly_wait(10)
 
-            message = self._build_report()
+            # Give the page a moment to render dynamic content
+            try:
+                self.driver.implicitly_wait(5)
+            except Exception:
+                pass
+
+            message = self._build_message()
             self.FILE_PATH.write_text(message, encoding="utf-8")
+            self._page_text = message
 
-            self.logger.info("Market report saved to %s", self.FILE_PATH)
+            self.logger.info("Saved market log to %s", self.FILE_PATH)
             return message
 
         finally:
-            try:
-                self.driver.quit()
-            except Exception:
-                pass
+            # Do not quit here if main.py is responsible for lifecycle management.
+            # If main.py does not quit, this can be uncommented later.
+            pass
