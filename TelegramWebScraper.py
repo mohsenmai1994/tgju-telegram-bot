@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, List, Optional
 
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-
 from Scraper import __webdriver__
 
 logging.basicConfig(
@@ -15,14 +12,6 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("TGJU_Scraper")
-
-
-@dataclass(frozen=True)
-class AssetMetadata:
-    search_keys: tuple[str, ...]
-    label: str
-    emoji: str
-    unit: str
 
 
 class TGJUScraper:
@@ -34,51 +23,12 @@ class TGJUScraper:
     def __init__(self, driver) -> None:
         self.driver = driver
 
-    def _safe_text(self, xpath: str, default: str = "N/A") -> str:
+    def _safe_text(self, xpath: str, default: str = "-") -> str:
         try:
             text = self.driver.find_element(By.XPATH, xpath).text.strip()
             return text if text else default
         except Exception:
             return default
-
-    def _wait_for_page_ready(self, timeout: int = 25) -> None:
-        """
-        Wait until *key* dynamic values are actually populated (not empty / not '-').
-        This is stronger than implicit waits and is a practical "page is ready" signal
-        for JS-driven pages like tgju.org.
-        """
-        wait = WebDriverWait(self.driver, timeout)
-
-        # 1) Timestamp exists and is not empty
-        wait.until(
-            lambda d: d.find_element(
-                By.XPATH, "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span"
-            ).text.strip() != ""
-        )
-
-        # 2) One major currency cell has real text (USD row)
-        wait.until(
-            lambda d: d.find_element(
-                By.XPATH,
-                "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[1]/td[1]",
-            ).text.strip() not in ("", "-")
-        )
-
-        # 3) One major coin cell has real text (Emami)
-        wait.until(
-            lambda d: d.find_element(
-                By.XPATH,
-                "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[1]/td[1]",
-            ).text.strip() not in ("", "-")
-        )
-
-        # 4) Gold ounce cell has real text
-        wait.until(
-            lambda d: d.find_element(
-                By.XPATH,
-                "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]",
-            ).text.strip() not in ("", "-")
-        )
 
     def build_report(self) -> str:
         market_time = self._safe_text(
@@ -118,43 +68,31 @@ class TGJUScraper:
         tether_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
         bitcoin_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
 
-        lines: list[str] = []
-        lines.append("#نرخ_ارز #سکه #طلا #دلار #بیتکوین")
+        lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین"]
 
         for label, xpath in currencies:
-            value = self._safe_text(xpath, "-")
-            lines.append(f"{label}: {value} ریال")
+            lines.append(f"{label}: {self._safe_text(xpath)} ریال")
 
         for label, xpath in coins:
-            value = self._safe_text(xpath, "-")
-            lines.append(f"{label}: {value} ریال")
+            lines.append(f"{label}: {self._safe_text(xpath)} ریال")
 
         for label, xpath, unit in golds:
-            value = self._safe_text(xpath, "-")
-            lines.append(f"{label}: {value} {unit}")
+            lines.append(f"{label}: {self._safe_text(xpath)} {unit}")
 
-        tether_value = self._safe_text(tether_xpath, "-")
-        lines.append(f"✴️ تتر: {tether_value} ریال")
+        lines.append(f"✴️ تتر: {self._safe_text(tether_xpath)} ریال")
+        lines.append(f"✴️ بیت کوین: {self._safe_text(bitcoin_xpath)} دلار")
 
-        bitcoin_value = self._safe_text(bitcoin_xpath, "-")
-        lines.append(f"✴️ بیت کوین: {bitcoin_value} دلار")
+        if market_time != "N/A":
+            lines.append(f"📅 {market_time}")
 
-        lines.append(market_time)
-        lines.append(f"ID: {self.CHANNEL_HANDLE}")
-
+        lines.append(f"🆔 {self.CHANNEL_HANDLE}")
         return "\n".join(lines)
 
     def run(self) -> Optional[str]:
         try:
             self.driver.get(self.TARGET_URL)
-
-            # Replace implicit wait with explicit readiness checks for JS-populated tables.
-            self._wait_for_page_ready(timeout=25)
-
-            report = self.build_report()
-            return report
-
+            # متد wait کاملاً حذف شد تا اجرای کد معطل نماند
+            return self.build_report()
         except Exception as exc:
-            logger.exception(f"Scraper failed: {exc}")
+            logger.exception("Scraper failed: %s", exc)
             return None
-
