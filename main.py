@@ -63,8 +63,10 @@ def execution_cycle() -> None:
         scraper = TGJUScraper(browser)
         content = scraper.run()
         
+    if content:
         transmit_to_telegram(content)
-            
+    else:
+        logging.warning("No content generated; Telegram transmission skipped.")       
     finally:
         if browser is not None:
             try:
