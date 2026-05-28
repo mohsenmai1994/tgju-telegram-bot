@@ -1,102 +1,135 @@
 import logging
 from dataclasses import dataclass
-from typing import List, Final
+from datetime import datetime
 from pathlib import Path
-from Scraper import Scraper
+from typing import Final, List
 
-@dataclass
-class Asset:
-    """Represents a market instrument with its extraction and display properties."""
+import pytz
+
+from Scraper import __webdriver__
+
+
+@dataclass(frozen=True)
+class AssetMetadata:
+    """
+    Represents a single market asset with its extraction selector
+    and display configuration.
+    """
     name: str
     xpath: str
     unit: str
-    emoji: str
+    symbol: str
 
-class TGJUScraper(Scraper):
+
+class TGJUScraper:
     """
-    Automated scraper for TGJU.org with custom Persian formatting 
-    for Telegram channel broadcasting.
+    Extracts market data from TGJU and writes the formatted result
+    to a local text file for downstream Telegram delivery.
     """
-    
+
     TARGET_URL: Final[str] = "https://www.tgju.org/"
     BASE_DIR: Final[Path] = Path(__file__).parent
-    CHANNEL_HANDLE: Final[str] = "aghayebazar_official"
+    FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
+    CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
 
-    # Asset definitions categorized by display groups
-    ASSETS: Final[List[Asset]] = [
-        # --- Currencies (Group 1: ☸️) ---
-        Asset("دلار آمريکا", '//*[@id="l-price_dollar_rl"]/span[1]', "ریال", "☸️"),
-        Asset("یورو", '//*[@id="l-price_eur"]/span[1]', "ریال", "☸️"),
-        Asset("درهم امارات", '//*[@id="l-price_aed"]/span[1]', "ریال", "☸️"),
-        Asset("پوند انگلیس", '//*[@id="l-price_gbp"]/span[1]', "ریال", "☸️"),
-        Asset("لیر ترکیه", '//*[@id="l-price_try"]/span[1]', "ریال", "☸️"),
-        Asset("فرانک سوئیس", '//*[@id="l-price_chf"]/span[1]', "ریال", "☸️"),
-        Asset("یوان چین", '//*[@id="l-price_cny"]/span[1]', "ریال", "☸️"),
-        Asset("ین ژاپن", '//*[@id="l-price_jpy"]/span[1]', "ریال", "☸️"),
-        Asset("وون کره جنوبی", '//*[@id="l-price_krw"]/span[1]', "ریال", "☸️"),
-        Asset("دلار کانادا", '//*[@id="l-price_cad"]/span[1]', "ریال", "☸️"),
-        Asset("دلار استرالیا", '//*[@id="l-price_aud"]/span[1]', "ریال", "☸️"),
-        Asset("دلار نیوزلند", '//*[@id="l-price_nzd"]/span[1]', "ریال", "☸️"),
-        
-        # --- Gold, Coins & Crypto (Group 2: ✴️) ---
-        Asset("سکه امامی", '//*[@id="l-coin_sekee"]/span[1]', "ریال", "✴️"),
-        Asset("سکه بهار آزادی", '//*[@id="l-price_bahar"]/span[1]', "ریال", "✴️"),
-        Asset("نیم سکه", '//*[@id="l-coin_nim"]/span[1]', "ریال", "✴️"),
-        Asset("ربع سکه", '//*[@id="l-coin_rob"]/span[1]', "ریال", "✴️"),
-        Asset("سکه گرمی", '//*[@id="l-price_gerami"]/span[1]', "ریال", "✴️"),
-        Asset("انس طلا", '//*[@id="l-ons"]/span[1]', "دلار", "✴️"),
-        Asset("طلای 18 عیار", '//*[@id="l-geram18"]/span[1]', "ریال", "✴️"),
-        Asset("طلای 24 عیار", '//*[@id="l-geram24"]/span[1]', "ریال", "✴️"),
-        Asset("طلای دست دوم", '//*[@id="l-gold_rent_second"]/span[1]', "ریال", "✴️"),
-        Asset("تتر", '//*[@id="l-crypto-tether"]/span[1]', "ریال", "✴️"),
-        Asset("بیت کوین", '//*[@id="l-crypto-bitcoin"]/span[1]', "دلار", "✴️")
+    # Asset catalog ordered exactly as intended for Telegram output.
+    ASSETS: Final[List[AssetMetadata]] = [
+        # Foreign exchange instruments
+        AssetMetadata("دلار آمريکا", '//*[@id="l-price_dollar_rl"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("یورو", '//*[@id="l-price_eur"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("درهم امارات", '//*[@id="l-price_aed"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("پوند انگلیس", '//*[@id="l-price_gbp"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("لیر ترکیه", '//*[@id="l-price_try"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("فرانک سوئیس", '//*[@id="l-price_chf"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("یوان چین", '//*[@id="l-price_cny"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("ین ژاپن", '//*[@id="l-price_jpy"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("وون کره جنوبی", '//*[@id="l-price_krw"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("دلار کانادا", '//*[@id="l-price_cad"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("دلار استرالیا", '//*[@id="l-price_aud"]/span[1]', "ریال", "☸️"),
+        AssetMetadata("دلار نیوزلند", '//*[@id="l-price_nzd"]/span[1]', "ریال", "☸️"),
+
+        # Gold, coin, and digital assets
+        AssetMetadata("سکه امامی", '//*[@id="l-coin_sekee"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("سکه بهار آزادی", '//*[@id="l-price_bahar"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("نیم سکه", '//*[@id="l-coin_nim"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("ربع سکه", '//*[@id="l-coin_rob"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("سکه گرمی", '//*[@id="l-price_gerami"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("انس طلا", '//*[@id="l-ons"]/span[1]', "دلار", "✴️"),
+        AssetMetadata("طلای 18 عیار", '//*[@id="l-geram18"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("طلای 24 عیار", '//*[@id="l-geram24"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("طلای دست دوم", '//*[@id="l-gold_rent_second"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("تتر", '//*[@id="l-crypto-tether"]/span[1]', "ریال", "✴️"),
+        AssetMetadata("بیت کوین", '//*[@id="l-crypto-bitcoin"]/span[1]', "دلار", "✴️"),
     ]
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self) -> None:
+        """Initializes the scraper with a browser driver instance."""
         self.logger = logging.getLogger(__name__)
+        self.driver = __webdriver__()
 
-    def fetch_market_data(self) -> str:
-        """Navigates to source and extracts data for all defined assets."""
+    def _extract_price(self, xpath: str) -> str:
+        """
+        Reads the text content of a target element.
+        Returns a placeholder if the element is not available.
+        """
         try:
-            self.logger.info(f"Connecting to {self.TARGET_URL}")
-            self.get(self.TARGET_URL)
-            
-            results = []
-            for asset in self.ASSETS:
-                price = self.read_text(asset.xpath)
-                if price:
-                    results.append(f"{asset.emoji} {asset.name}: {price.strip()} {asset.unit}")
-                else:
-                    self.logger.warning(f"Selector mismatch for: {asset.name}")
-            
-            return self._build_final_message(results) if results else "⚠️ Error in data extraction."
+            value = self.driver.read_text(xpath)
+            return value.strip() if value else "-"
+        except Exception as exc:
+            self.logger.warning("Failed to extract XPath %s: %s", xpath, exc)
+            return "-"
 
-        except Exception as e:
-            self.logger.error(f"Scraping process failed: {e}")
-            return "❌ Connection to data source failed."
-
-    def _build_final_message(self, data_lines: List[str]) -> str:
-        """Formats the output into the requested Telegram template."""
-        from datetime import datetime
-        import pytz
-
-        # Setting up Persian Date/Time
-        tehran_tz = pytz.timezone('Asia/Tehran')
+    def _extract_persian_timestamp(self) -> str:
+        """
+        Builds a Tehran-local timestamp string.
+        Note: this is a Persian-language formatted timestamp, not a Jalali conversion.
+        """
+        tehran_tz = pytz.timezone("Asia/Tehran")
         now = datetime.now(tehran_tz)
-        
-        # Simple Persian weekday and month mapping
-        weekdays = ["دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه", "شنبه", "یکشنبه"]
-        months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"]
-        
-        # Note: For professional Jalali conversion, 'jdatetime' library is recommended.
-        # This provides a close approximation for the timestamp string.
-        time_str = now.strftime("%H:%M:%S")
-        date_footer = f"{now.day} {months[(now.month-1)%12]} - {time_str}"
 
-        # Building the final structure
-        hashtags = "#نرخ_ارز #سکه #طلا #دلار #بیتکوین\n\n"
-        body = "\n".join(data_lines)
-        footer = f"\n\n{date_footer}\nID: @{self.CHANNEL_HANDLE}"
-        
-        return hashtags + body + footer
+        weekdays = {
+            0: "دوشنبه",
+            1: "سه‌شنبه",
+            2: "چهارشنبه",
+            3: "پنج‌شنبه",
+            4: "جمعه",
+            5: "شنبه",
+            6: "یکشنبه",
+        }
+
+        months = {
+            1: "ژانویه",
+            2: "فوریه",
+            3: "مارس",
+            4: "آوریل",
+            5: "مه",
+            6: "ژوئن",
+            7: "ژوئیه",
+            8: "اوت",
+            9: "سپتامبر",
+            10: "اکتبر",
+            11: "نوامبر",
+            12: "دسامبر",
+        }
+
+        weekday_name = weekdays[now.weekday()]
+        month_name = months[now.month]
+        return f"{weekday_name} {now.day} {month_name} - {now.strftime('%H:%M:%S')}"
+
+    def _build_report(self) -> str:
+        """
+        Creates the final Telegram-ready message using the requested layout.
+        """
+        lines: List[str] = [
+            "#نرخ_ارز #سکه #طلا #دلار #بیتکوین",
+            ""
+        ]
+
+        for asset in self.ASSETS:
+            value = self._extract_price(asset.xpath)
+            lines.append(f"{asset.symbol} {asset.name}: {value} {asset.unit}")
+
+        lines.extend([
+            "",
+            self._extract_persian_timestamp(),
+            f"ID: {self.CH
