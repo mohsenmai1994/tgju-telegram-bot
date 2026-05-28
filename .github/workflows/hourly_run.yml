@@ -2,7 +2,9 @@ name: Hourly Telegram Scraper
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    # Executes once per hour between 06:00 and 18:00 UTC,
+    # corresponding approximately to 09:30–21:30 Iran local time.
+    - cron: '0 6-18 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -12,7 +14,9 @@ concurrency:
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Terminates the job after 7 minutes to prevent unnecessary quota consumption
+    # in the event of a hang, infinite loop, or external service delay.
+    timeout-minutes: 7
 
     steps:
       - name: Checkout repository
@@ -22,11 +26,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          cache: 'pip'  # Enables pip cache to reduce dependency installation time in subsequent runs.
 
       - name: Install Python dependencies
         run: |
