@@ -115,12 +115,3 @@ class TGJUScraper:
         except Exception as exc:
             logger.exception(f"Scraper failed: {exc}")
             return None
-
-
-if __name__ == "__main__":
-    browser = __webdriver__()
-    try:
-        scraper = TGJUScraper(browser)
-        print(scraper.run())
-    finally:
-        browser.quit()
