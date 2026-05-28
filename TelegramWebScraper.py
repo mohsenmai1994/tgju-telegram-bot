@@ -116,3 +116,9 @@ class TGJUScraper:
         except Exception as exc:
             logger.exception("Scraper failed: %s", exc)
             return None
+
+browser = __webdriver__()
+scraper = TGJUScraper(browser)
+content = scraper.run()
+
+print(content)
