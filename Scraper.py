@@ -1,12 +1,10 @@
 import time
-import os
 import platform
 from pathlib import Path
 from typing import Final
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager # نیاز به نصب دارد
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
@@ -26,22 +24,21 @@ class __webdriver__(webdriver.Chrome):
             options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
             
         if service is None:
-            # تشخیص هوشمند سیستم عامل
-            current_os = platform.system()
+            # جستجو برای درایور در کنار فایل اسکریپت
+            # نام فایل بر اساس سیستم عامل تنظیم می‌شود
+            driver_name = "chromedriver.exe" if platform.system() == "Windows" else "chromedriver"
+            driver_path = BASE_DIR / driver_name
             
-            if current_os == "Windows":
-                # مسیر فایل در ویندوز شما
-                driver_path = BASE_DIR / "chromedriver.exe"
+            # اگر درایور در کنار پروژه باشد از آن استفاده می‌کند
+            if driver_path.exists():
                 service = ChromeService(executable_path=str(driver_path))
             else:
-                # نصب خودکار درایور مناسب لینوکس در GitHub Actions
-                # این خط مشکل Permission و نسخه درایور را کاملاً حل می‌کند
-                service = ChromeService(ChromeDriverManager().install())
+                # اگر فایل نباشد، فرض را بر این می‌گیرد که chromedriver در PATH سیستم نصب است
+                service = ChromeService()
 
         super().__init__(options=options, service=service, keep_alive=keep_alive)
         self.set_window_size(2560, 1440)
 
-    # ... بقیه متدهای find_element و read_text بدون تغییر باقی بمانند ...
     def find_element(self, by, value=None, timeout=5):
         start = time.time()
         last_exception = None
