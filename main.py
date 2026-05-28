@@ -61,16 +61,10 @@ def execution_cycle() -> None:
     try:
         browser = __webdriver__()
         scraper = TGJUScraper(browser)
-        scraper.run()
-
-        if FILE_PATH.exists():
-            content = FILE_PATH.read_text(encoding="utf-8").strip()
-            if content:
-                transmit_to_telegram(content)
-            else:
-                logging.warning("market_log.txt is empty.")
-        else:
-            logging.warning("market_log.txt not found.")
+        content = scraper.run()
+        
+        transmit_to_telegram(content)
+            
     finally:
         if browser is not None:
             try:
