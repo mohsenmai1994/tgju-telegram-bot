@@ -1,106 +1,166 @@
 from __future__ import annotations
+
 import logging
-import time
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Optional
+from typing import Final, List, Optional
+
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+
 from Scraper import __webdriver__
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 logger = logging.getLogger("TGJU_Scraper")
+
+
+@dataclass(frozen=True)
+class AssetMetadata:
+    search_keys: tuple[str, ...]
+    label: str
+    emoji: str
+    unit: str
+
 
 class TGJUScraper:
     TARGET_URL: Final[str] = "https://www.tgju.org/"
     BASE_DIR: Final[Path] = Path(__file__).parent
     FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
+    CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
 
-    def __init__(self, driver: __webdriver__) -> None:
+    def __init__(self, driver) -> None:
         self.driver = driver
 
-    def _get_val(self, xpath: str) -> str:
+    def _safe_text(self, xpath: str, default: str = "N/A") -> str:
         try:
-            # استفاده از متد سفارشی شما که در Scraper.py تعریف کردید
-            element = self.driver.find_element(By.XPATH, xpath)
-            return element.text.strip()
+            text = self.driver.find_element(By.XPATH, xpath).text.strip()
+            return text if text else default
         except Exception:
-            return "-"
+            return default
+
+    def _wait_for_page_ready(self, timeout: int = 25) -> None:
+        """
+        Wait until *key* dynamic values are actually populated (not empty / not '-').
+        This is stronger than implicit waits and is a practical "page is ready" signal
+        for JS-driven pages like tgju.org.
+        """
+        wait = WebDriverWait(self.driver, timeout)
+
+        # 1) Timestamp exists and is not empty
+        wait.until(
+            lambda d: d.find_element(
+                By.XPATH, "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span"
+            ).text.strip() != ""
+        )
+
+        # 2) One major currency cell has real text (USD row)
+        wait.until(
+            lambda d: d.find_element(
+                By.XPATH,
+                "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[1]/td[1]",
+            ).text.strip() not in ("", "-")
+        )
+
+        # 3) One major coin cell has real text (Emami)
+        wait.until(
+            lambda d: d.find_element(
+                By.XPATH,
+                "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[1]/td[1]",
+            ).text.strip() not in ("", "-")
+        )
+
+        # 4) Gold ounce cell has real text
+        wait.until(
+            lambda d: d.find_element(
+                By.XPATH,
+                "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]",
+            ).text.strip() not in ("", "-")
+        )
 
     def build_report(self) -> str:
-        # زمان بروزرسانی از هدر سایت
-        market_time = self._get_val("/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span")
+        market_time = self._safe_text(
+            "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span",
+            "N/A",
+        )
 
-        # لیست ارزها با استفاده از شناسه سطر و ستون اول (طبق تایید شما td[1])
-        currencies = [
-            ("☸️ دلار آمريکا", "//tr[@data-market-row='price_dollar_rl']/td[1]"),
-            ("☸️ یورو", "//tr[@data-market-row='price_eur']/td[1]"),
-            ("☸️ درهم آمارات", "//tr[@data-market-row='price_aed']/td[1]"),
-            ("☸️ پوند انگلیس", "//tr[@data-market-row='price_gbp']/td[1]"),
-            ("☸️ لیر ترکیه", "//tr[@data-market-row='price_try']/td[1]"),
-            ("☸️ فرانک سوئیس", "//tr[@data-market-row='price_chf']/td[1]"),
-            ("☸️ یوان چین", "//tr[@data-market-row='price_cny']/td[1]"),
-            ("☸️ ین ژاپن", "//tr[@data-market-row='price_jpy']/td[1]"),
-            ("☸️ وون کره جنوبی", "//tr[@data-market-row='price_krw']/td[1]"),
-            ("☸️ دلار کانادا", "//tr[@data-market-row='price_cad']/td[1]"),
-            ("☸️ دلار استرالیا", "//tr[@data-market-row='price_aud']/td[1]"),
-            ("☸️ دلار نیوزلند", "//tr[@data-market-row='price_nzd']/td[1]"),
+        currencies: List[tuple[str, str]] = [
+            ("☸️ دلار آمريکا", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[1]/td[1]"),
+            ("☸️ یورو", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[2]/td[1]"),
+            ("☸️ درهم آمارات", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[3]/td[1]"),
+            ("☸️ پوند انگلیس", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[4]/td[1]"),
+            ("☸️ لیر ترکیه", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[5]/td[1]"),
+            ("☸️ فرانک سوئیس", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[6]/td[1]"),
+            ("☸️ یوان چین", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[7]/td[1]"),
+            ("☸️ ین ژاپن", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[8]/td[1]"),
+            ("☸️ وون کره جنوبی", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[9]/td[1]"),
+            ("☸️ دلار کانادا", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[10]/td[1]"),
+            ("☸️ دلار استرالیا", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[11]/td[1]"),
+            ("☸️ دلار نیوزلند", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[12]/td[1]"),
         ]
 
-        coins = [
-            ("✴️ سکه امامی", "//tr[@data-market-row='sekee']/td[1]"),
-            ("✴️ سکه بهار آزادی", "//tr[@data-market-row='bahar']/td[1]"),
-            ("✴️ نیم سکه", "//tr[@data-market-row='nim']/td[1]"),
-            ("✴️ ربع سکه", "//tr[@data-market-row='rob']/td[1]"),
-            ("✴️ سکه گرمی", "//tr[@data-market-row='gerami']/td[1]"),
+        coins: List[tuple[str, str]] = [
+            ("✴️ سکه امامی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[1]/td[1]"),
+            ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[2]/td[1]"),
+            ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[3]/td[1]"),
+            ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[4]/td[1]"),
+            ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[5]/td[1]"),
         ]
 
-        golds = [
-            ("✴️ انس طلا", "//tr[@data-market-row='ons']/td[1]", "دلار"),
-            ("✴️ طلای 18 عیار", "//tr[@data-market-row='geram18']/td[1]", "ریال"),
-            ("✴️ طلای 24 عیار", "//tr[@data-market-row='geram24']/td[1]", "ریال"),
-            ("✴️ طلای دست دوم", "//tr[@data-market-row='gold_mini_2']/td[1]", "ریال"),
+        golds: List[tuple[str, str, str]] = [
+            ("✴️ انس طلا", "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]", "دلار"),
+            ("✴️ طلای 18 عیار", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[1]/td[1]", "ریال"),
+            ("✴️ طلای 24 عیار", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[2]/td[1]", "ریال"),
+            ("✴️ طلای دست دوم", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[3]/td[1]", "ریال"),
         ]
 
-        tether_val = self._get_val("//tr[@data-market-row='crypto-tether']/td[1]")
-        bitcoin_val = self._get_val("//tr[@data-market-row='crypto-bitcoin']/td[1]")
+        tether_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
+        bitcoin_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
 
-        lines = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین", ""]
+        lines: list[str] = []
+        lines.append("#نرخ_ارز #سکه #طلا #دلار #بیتکوین")
 
         for label, xpath in currencies:
-            lines.append(f"{label}: {self._get_val(xpath)} ریال")
+            value = self._safe_text(xpath, "-")
+            lines.append(f"{label}: {value} ریال")
 
         for label, xpath in coins:
-            lines.append(f"{label}: {self._get_val(xpath)} ریال")
+            value = self._safe_text(xpath, "-")
+            lines.append(f"{label}: {value} ریال")
 
         for label, xpath, unit in golds:
-            lines.append(f"{label}: {self._get_val(xpath)} {unit}")
+            value = self._safe_text(xpath, "-")
+            lines.append(f"{label}: {value} {unit}")
 
-        lines.append(f"✴️ تتر: {tether_val} ریال")
-        lines.append(f"✴️ بیت کوین: {bitcoin_val} دلار")
-        lines.append("")
+        tether_value = self._safe_text(tether_xpath, "-")
+        lines.append(f"✴️ تتر: {tether_value} ریال")
+
+        bitcoin_value = self._safe_text(bitcoin_xpath, "-")
+        lines.append(f"✴️ بیت کوین: {bitcoin_value} دلار")
+
         lines.append(market_time)
-        lines.append("ID: @aghayebazar_official")
+        lines.append(f"ID: {self.CHANNEL_HANDLE}")
 
         return "\n".join(lines)
 
     def run(self) -> Optional[str]:
         try:
-            logger.info(f"Opening {self.TARGET_URL}...")
             self.driver.get(self.TARGET_URL)
-            
-            # بسیار مهم: صبر برای اجرای اسکریپت‌های قیمت‌گذاری سایت
-            logger.info("Waiting 8 seconds for prices to update...")
-            time.sleep(8) 
-            
+
+            # Replace implicit wait with explicit readiness checks for JS-populated tables.
+            self._wait_for_page_ready(timeout=25)
+
             report = self.build_report()
-            
+
             with open(self.FILE_PATH, "w", encoding="utf-8") as f:
                 f.write(report)
-            
-            logger.info("Market report saved to market_log.txt")
+
+            logger.info("Report saved to market_log.txt")
             return report
-        except Exception as e:
-            logger.error(f"Scraper error: {e}")
+
+        except Exception as exc:
+            logger.exception(f"Scraper failed: {exc}")
             return None
+
