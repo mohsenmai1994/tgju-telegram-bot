@@ -8,8 +8,8 @@ from typing import Final, Optional
 
 import pytz
 
-from TelegramWebScraper import TGJUScraper, __webdriver__
-
+#from TelegramWebScraper import TGJUScraper, __webdriver__
+from TelegramWebScraper import __webdriver__
 
 logging.basicConfig(
     level=logging.INFO,
