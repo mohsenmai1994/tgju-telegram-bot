@@ -69,8 +69,8 @@ class TGJUScraper:
         ]
 
         # crypto / dollar
-        tether_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
-        bitcoin_xpath = "/html/body/main/div[7]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
+        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
+        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
 
         lines = []
         lines.append("#نرخ_ارز #سکه #طلا #دلار #بیتکوین")
