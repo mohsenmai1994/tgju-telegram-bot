@@ -102,7 +102,6 @@ class TGJUScraper:
         ]
 
         coins: List[tuple[str, str]] = [
-            ("✴️ سکه امامی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[1]/td[1]"),
             ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[2]/td[1]"),
             ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[3]/td[1]"),
             ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[10]/table/tbody/tr[4]/td[1]"),
@@ -111,7 +110,7 @@ class TGJUScraper:
 
         golds: List[tuple[str, str, str]] = [
             ("✴️ انس طلا", "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]", "دلار"),
-            ("✴️ طلای 18 عیار", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[1]/td[1]", "ریال"),
+            ("✴️ طلای 18 عیار", "/html/body/main/div[1]/div[2]/div/ul/li[5]/span[1]/span", "ریال"),
             ("✴️ طلای 24 عیار", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[2]/td[1]", "ریال"),
             ("✴️ طلای دست دوم", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[3]/td[1]", "ریال"),
         ]
