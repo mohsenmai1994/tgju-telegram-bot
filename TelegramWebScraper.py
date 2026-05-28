@@ -152,11 +152,6 @@ class TGJUScraper:
             self._wait_for_page_ready(timeout=25)
 
             report = self.build_report()
-
-            with open(self.FILE_PATH, "w", encoding="utf-8") as f:
-                f.write(report)
-
-            logger.info("Report saved to market_log.txt")
             return report
 
         except Exception as exc:
