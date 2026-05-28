@@ -17,7 +17,7 @@ logger = logging.getLogger("TGJU_Scraper")
 
 class TGJUScraper:
     # Target website and output configuration
-    TARGET_URL: Final[str] = "https://www.tgju.org/"
+    TARGET_URL: Final[str] = "https://bv.emofid.com/market/currency"
     BASE_DIR: Final[Path] = Path(__file__).parent
     FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
     CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
@@ -39,27 +39,27 @@ class TGJUScraper:
 
         # Currency values
         currencies: List[tuple[str, str]] = [
-            ("☸️ دلار آمريکا", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[1]/td[1]"),
-            ("☸️ یورو", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[2]/td[1]"),
-            ("☸️ پوند انگلیس", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[4]/td[1]"),
-            ("☸️ لیر ترکیه", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[5]/td[1]"),
-            ("☸️ فرانک سوئیس", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[6]/td[1]"),
-            ("☸️ یوان چین", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[7]/td[1]"),
-            ("☸️ ین ژاپن", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[8]/td[1]"),
+            ("☸️ دلار آمريکا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]"),
+            ("☸️ یورو", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[2]/div[3]/div[1]"),
+            ("☸️ پوند انگلیس", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[4]/div[3]/div[1]"),
+            ("☸️ لیر ترکیه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
+            ("☸️ فرانک سوئیس", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[10]/div[3]/div[1]"),
+            ("☸️ یوان چین", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
+            ("☸️ ین ژاپن", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[7]/div[3]/div[1]"),
             ]
 
         # Coin values
         coins: List[tuple[str, str]] = [
-            ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[2]/td[1]"),
-            ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[3]/td[1]"),
-            ("✴️ ربع سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[4]/td[1]"),
-            ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[5]/td[1]"),
+            ("✴️ سکه بهار آزادی", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[3]/div[3]/div[1]"),
+            ("✴️ نیم سکه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[4]/div[3]/div[1]"),
+            ("✴️ ربع سکه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[5]/div[3]/div[1]"),
+            ("✴️ سکه گرمی", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
         ]
 
         # Gold and ounce values
         golds: List[tuple[str, str, str]] = [
-            ("✴️ انس طلا", "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]", "دلار"),
-            ("✴️ طلای 18 عیار", "/html/body/main/div[1]/div[2]/div/ul/li[5]/span[1]/span", "ریال"),
+            ("✴️ انس طلا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]/span", "دلار"),
+            ("✴️ طلای 18 عیار", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[7]/div[3]/div[1]", "ریال"),
         ]
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
@@ -71,6 +71,8 @@ class TGJUScraper:
                 lines.append(f"{label}: {val if val else '-'} ریال")
             except Exception:
                 lines.append(f"{label}: - ریال")
+
+        self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[2]").click()
 
         # Extract coins
         for label, xpath in coins:
@@ -87,16 +89,13 @@ class TGJUScraper:
                 lines.append(f"{label}: {val if val else '-'} {unit}")
             except Exception:
                 lines.append(f"{label}: - {unit}")
-
-        # Extract tether and bitcoin
+  
+        self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[3]").click()
+        
+        # Extract bitcoin
+        
         try:
-            tether_val = self.driver.find_element(By.XPATH, "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]").text.strip()
-            lines.append(f"✴️ تتر: {tether_val if tether_val else '-'} ریال")
-        except Exception:
-            lines.append("✴️ تتر: - ریال")
-
-        try:
-            btc_val = self.driver.find_element(By.XPATH, "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]").text.strip()
+            btc_val = self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]").text.strip()
             lines.append(f"✴️ بیت کوین: {btc_val if btc_val else '-'} دلار")
         except Exception:
             lines.append("✴️ بیت کوین: - دلار")
