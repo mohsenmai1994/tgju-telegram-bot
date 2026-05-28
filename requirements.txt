@@ -2,4 +2,3 @@ selenium
 requests
 pytz
 num2words
-webdriver-manager
