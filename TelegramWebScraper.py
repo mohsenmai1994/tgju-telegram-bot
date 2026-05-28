@@ -3,158 +3,182 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Final, List, Optional
 
-import pytz
 from selenium.webdriver.common.by import By
-
 from Scraper import __webdriver__
 
 
+# =============================================================================
+# Logging Setup
+# =============================================================================
+# A deterministic logging configuration is utilized to facilitate debugging 
+# and audit trails. This ensures that any discrepancies in text extraction 
+# or I/O operations are captured with precise timestamps.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
+logger = logging.getLogger("TGJU_Scraper")
+
+
+# =============================================================================
+# Data Model
+# =============================================================================
 @dataclass(frozen=True)
 class AssetMetadata:
-    name: str
-    xpath: str
+    """
+    Immutable schema for market asset definitions.
+    
+    Attributes
+    ----------
+    search_keys : List[str]
+        Ordered collection of string identifiers used for regex-based matching.
+    label : str
+        The human-readable canonical name for the asset.
+    emoji : str
+        Visual glyph for report formatting.
+    unit : str
+        The localized currency or measurement unit.
+    """
+    search_keys: List[str]
+    label: str
+    emoji: str
     unit: str
-    symbol: str
 
 
+# =============================================================================
+# Scraper Implementation
+# =============================================================================
 class TGJUScraper:
     """
-    TGJU market data scraper.
-
-    Receives an already-created browser driver and extracts market values
-    from TGJU using XPath selectors, then writes the final report to a file.
+    Financial data extraction engine for the TGJU platform.
+    
+    This implementation utilizes a decoupled architecture where the extraction 
+    logic is separated from the I/O layer. It leverages Unicode-aware normalization 
+    to handle Persian/Arabic orthographic variations.
     """
 
+    # -------------------------------------------------------------------------
+    # Static Configuration & Filesystem Resolution
+    # -------------------------------------------------------------------------
     TARGET_URL: Final[str] = "https://www.tgju.org/"
+    
+    # Path Resolution: Using __file__ allows the script to be environment-agnostic.
+    # This is critical for deployments on cloud-synced drives like Proton Drive.
     BASE_DIR: Final[Path] = Path(__file__).parent
     FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
+
     CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
 
+    # -------------------------------------------------------------------------
+    # Asset Registry
+    # -------------------------------------------------------------------------
     ASSETS: Final[List[AssetMetadata]] = [
-        AssetMetadata("دلار آمریکا", '//*[@id="l-price_dollar_rl"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("یورو", '//*[@id="l-price_eur"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("درهم امارات", '//*[@id="l-price_aed"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("پوند انگلیس", '//*[@id="l-price_gbp"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("لیر ترکیه", '//*[@id="l-price_try"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("فرانک سوئیس", '//*[@id="l-price_chf"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("یوان چین", '//*[@id="l-price_cny"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("ین ژاپن", '//*[@id="l-price_jpy"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("دلار کانادا", '//*[@id="l-price_cad"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("دلار استرالیا", '//*[@id="l-price_aud"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("دلار نیوزلند", '//*[@id="l-price_nzd"]/span[1]', "ریال", "☸️"),
-        AssetMetadata("سکه امامی", '//*[@id="l-coin_sekee"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("سکه بهار آزادی", '//*[@id="l-price_bahar"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("نیم سکه", '//*[@id="l-coin_nim"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("ربع سکه", '//*[@id="l-coin_rob"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("سکه گرمی", '//*[@id="l-price_gerami"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("انس طلا", '//*[@id="l-ons"]/span[1]', "دلار", "✴️"),
-        AssetMetadata("طلای 18 عیار", '//*[@id="l-geram18"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("طلای 24 عیار", '//*[@id="l-geram24"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("طلای دست دوم", '//*[@id="l-gold_rent_second"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("تتر", '//*[@id="l-crypto-tether"]/span[1]', "ریال", "✴️"),
-        AssetMetadata("بیت کوین", '//*[@id="l-crypto-bitcoin"]/span[1]', "دلار", "✴️"),
+        AssetMetadata(
+            search_keys=["دلار", "قیمت دلار"],
+            label="دلار آمریکا", emoji="☸️", unit="ریال"
+        ),
+        AssetMetadata(search_keys=["یورو"], label="یورو", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["درهم امارات"], label="درهم امارات", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["پوند انگلیس"], label="پوند انگلیس", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["لیر ترکیه"], label="لیر ترکیه", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["فرانک سوئیس"], label="فرانک سوئیس", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["یوان چین"], label="یوان چین", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["ین ژاپن"], label="ین ژاپن", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["وون کره جنوبی"], label="وون کره جنوبی", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["دلار کانادا"], label="دلار کانادا", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["دلار استرالیا"], label="دلار استرالیا", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["دلار نیوزیلند"], label="دلار نیوزیلند", emoji="☸️", unit="ریال"),
+        AssetMetadata(search_keys=["سکه بهار آزادی"], label="سکه بهار آزادی", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["نیم سکه"], label="نیم سکه", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["ربع سکه"], label="ربع سکه", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["سکه گرمی"], label="سکه گرمی", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["انس طلا"], label="انس طلا", emoji="✴️", unit="دلار"),
+        AssetMetadata(search_keys=["طلای 18 عیار"], label="طلای 18 عیار", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["طلای 24 عیار"], label="طلای 24 عیار", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["طلای دست دوم"], label="طلای دست دوم", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["تتر", "USDT"], label="تتر", emoji="✴️", unit="ریال"),
+        AssetMetadata(search_keys=["بیت کوین", "Bitcoin", "BTC"], label="بیت کوین", emoji="✴️", unit="دلار"),
     ]
 
     def __init__(self, driver) -> None:
         self.driver = driver
-        self.logger = logging.getLogger(__name__)
         self._page_text: str = ""
 
-    def _normalize_text(self, text: str) -> str:
-        if not text:
-            return "-"
-        text = text.strip()
-        text = re.sub(r"\s+", " ", text)
-        return text
+    def _normalize_text(self, raw_text: str) -> str:
+        """Applies orthographic normalization for Persian/Arabic character sets."""
+        if not raw_text: return ""
+        translation_map = str.maketrans({"ي": "ی", "ى": "ی", "ك": "ک", "‌": " "})
+        normalized = raw_text.translate(translation_map)
+        return re.sub(r"\s+", " ", normalized).strip()
 
-    def _extract_text_by_xpath(self, xpath: str) -> str:
+    def _extract_numeric_value(self, search_keys: List[str]) -> str:
+        """Heuristic-based numeric extraction with bounded spatial lookahead."""
+        numeric_token = r"[\d۰-۹,٬.]+"
+        bounded_gap = r"[^\d۰-۹]{0,25}"
+
+        for key in search_keys:
+            pattern = rf"{re.escape(self._normalize_text(key))}{bounded_gap}({numeric_token})"
+            match = re.search(pattern, self._page_text)
+            if match:
+                val = match.group(1).strip(" ,٬.")
+                if re.search(r"[\d۰-۹]", val): return val
+        return "N/A"
+
+    def _extract_persian_timestamp(self) -> str:
+        """Parses and formats the Persian chronological marker from the DOM text."""
+        wd = r"شنبه|یکشنبه|دوشنبه|سه‌شنبه|سه شنبه|چهارشنبه|پنجشنبه|جمعه"
+        mn = r"فروردین|اردیبهشت|خرداد|تیر|مرداد|شهریور|مهر|آبان|آذر|دی|بهمن|اسفند"
+        digit = r"0-9۰-۹"
+        tm = rf"[{digit}]{{1,2}}:[{digit}]{{1,2}}:[{digit}]{{1,2}}"
+
+        pattern = rf"(({wd})\s+([{digit}]{{1,2}})\s+({mn})\s*-\s*({tm}))"
+        match = re.search(pattern, self._page_text)
+        return match.group(1) if match else "N/A"
+
+    def _load_page_text(self) -> None:
         try:
-            element = self.driver.find_element(By.XPATH, xpath)
-            value = element.text or element.get_attribute("textContent") or "-"
-            return self._normalize_text(value)
+            body_element = self.driver.find_element(By.TAG_NAME, "body")
+            self._page_text = self._normalize_text(body_element.text)
         except Exception as exc:
-            self.logger.warning("XPath extract failed for %s: %s", xpath, exc)
-            return "-"
+            raise RuntimeError(f"DOM Access Failure: {exc}")
 
-    def _extract_numeric_value(self, text: str) -> str:
-        if not text:
-            return "-"
-        match = re.search(r"[\d,]+(?:\.\d+)?", text)
-        return match.group(0) if match else text
-
-    def _extract_tehran_timestamp(self) -> str:
-        tz = pytz.timezone("Asia/Tehran")
-        now = datetime.now(tz)
-
-        weekdays = {
-            0: "دوشنبه",
-            1: "سه‌شنبه",
-            2: "چهارشنبه",
-            3: "پنج‌شنبه",
-            4: "جمعه",
-            5: "شنبه",
-            6: "یکشنبه",
-        }
-
-        months = {
-            1: "ژانویه",
-            2: "فوریه",
-            3: "مارس",
-            4: "آوریل",
-            5: "مه",
-            6: "ژوئن",
-            7: "ژوئیه",
-            8: "اوت",
-            9: "سپتامبر",
-            10: "اکتبر",
-            11: "نوامبر",
-            12: "دسامبر",
-        }
-
-        return f"{weekdays[now.weekday()]} {now.day} {months[now.month]} - {now.strftime('%H:%M:%S')}"
-
-    def _build_message(self) -> str:
-        lines: List[str] = [
-            "#نرخ_ارز #سکه #طلا #بیتکوین",
-            "",
-        ]
-
+    def build_report(self) -> str:
+        """Synthesizes the extracted data into a structured Telegram-compatible report."""
+        self._load_page_text()
+        lines = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین", ""]
         for asset in self.ASSETS:
-            raw_value = self._extract_text_by_xpath(asset.xpath)
-            value = self._extract_numeric_value(raw_value)
-            lines.append(f"{asset.symbol} {asset.name}: {value} {asset.unit}")
-
-        lines.extend([
-            "",
-            self._extract_tehran_timestamp(),
-            f"ID: {self.CHANNEL_HANDLE}",
-        ])
-
+            val = self._extract_numeric_value(asset.search_keys)
+            lines.append(f"{asset.emoji} {asset.label}: {val} {asset.unit}")
+        lines.extend(["", self._extract_persian_timestamp(), f"ID: {self.CHANNEL_HANDLE}"])
         return "\n".join(lines)
 
-    def run(self) -> str:
+    def run(self) -> Optional[str]:
+        """Main execution workflow: Navigation -> Extraction -> Persistence."""
         try:
-            self.logger.info("Opening TGJU: %s", self.TARGET_URL)
+            logger.info(f"Navigating to {self.TARGET_URL}")
             self.driver.get(self.TARGET_URL)
+            self.driver.implicitly_wait(10)
 
-            # Give the page a moment to render dynamic content
-            try:
-                self.driver.implicitly_wait(5)
-            except Exception:
-                pass
+            report = self.build_report()
 
-            message = self._build_message()
-            self.FILE_PATH.write_text(message, encoding="utf-8")
-            self._page_text = message
+            # Using atomic write to ensure data integrity
+            with open(self.FILE_PATH, "w", encoding="utf-8") as output_file:
+                output_file.write(report)
 
-            self.logger.info("Saved market log to %s", self.FILE_PATH)
-            return message
+            logger.info(f"Artifact successfully persisted at: {self.FILE_PATH}")
+            return report
+        except Exception as exc:
+            logger.error(f"Execution pipeline failed: {exc}")
+            return None
 
-        finally:
-            # Do not quit here if main.py is responsible for lifecycle management.
-            # If main.py does not quit, this can be uncommented later.
-            pass
+
+if __name__ == "__main__":
+    browser = __webdriver__()
+    try:
+        scraper = TGJUScraper(browser)
+        print(scraper.run())
+    finally:
+        browser.quit()
