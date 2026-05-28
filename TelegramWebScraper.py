@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import Final, List, Optional
 
@@ -17,7 +16,7 @@ logger = logging.getLogger("TGJU_Scraper")
 
 
 class TGJUScraper:
-    # Target website and channel configurations
+    # Target website and output configuration
     TARGET_URL: Final[str] = "https://www.tgju.org/"
     BASE_DIR: Final[Path] = Path(__file__).parent
     FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
@@ -26,49 +25,19 @@ class TGJUScraper:
     def __init__(self, driver) -> None:
         self.driver = driver
 
-    def _safe_text(self, xpath: str, default: str = "-") -> str:
-        """
-        Safely attempts to find an element and retrieve its stripped text content.
-        Returns the default value if an exception occurs or if the element is empty.
-        """
-        try:
-            text = self.driver.find_element(By.XPATH, xpath).text.strip()
-            return text if text else default
-        except Exception:
-            return default
-
-    def _wait_until_text_ready(
-        self,
-        xpath: str,
-        timeout: float = 15.0,
-        poll_interval: float = 0.3,
-        invalid_values: tuple[str, ...] = ("", "-"),
-    ) -> bool:
-        """
-        Smart poll-based wait. Keeps checking the given XPath until its text value
-        is loaded (i.e., not empty and not matching any invalid fallback values).
-        Returns True if the data loads successfully within the timeout, otherwise False.
-        """
-        end_time = time.time() + timeout
-        while time.time() < end_time:
-            current_value = self._safe_text(xpath, default="")
-            if current_value.strip() not in invalid_values:
-                return True
-            time.sleep(poll_interval)
-        return False
-
     def build_report(self) -> str:
         """
-        Retrieves all live financial rates from the DOM and formats them
-        into a clean, structured text report ready for Telegram.
+        Extract market data from the page directly without helper methods.
+        If an element is missing, it defaults to '-'.
         """
-        # Retrieve the overall market update timestamp
-        market_time = self._safe_text(
-            "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span",
-            "N/A",
-        )
+        # Read market update time from the header
+        try:
+            market_time_el = self.driver.find_element(By.XPATH, "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span")
+            market_time = market_time_el.text.strip() if market_time_el.text.strip() else "N/A"
+        except Exception:
+            market_time = "N/A"
 
-        # List of currencies to extract (Label, XPath)
+        # Currency values
         currencies: List[tuple[str, str]] = [
             ("☸️ دلار آمريکا", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[1]/td[1]"),
             ("☸️ یورو", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[2]/td[1]"),
@@ -84,7 +53,7 @@ class TGJUScraper:
             ("☸️ دلار نیوزلند", "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[12]/td[1]"),
         ]
 
-        # List of physical gold coins to extract (Label, XPath)
+        # Coin values
         coins: List[tuple[str, str]] = [
             ("✴️ سکه بهار آزادی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[2]/td[1]"),
             ("✴️ نیم سکه", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[3]/td[1]"),
@@ -92,7 +61,7 @@ class TGJUScraper:
             ("✴️ سکه گرمی", "/html/body/main/div[4]/div[4]/div[13]/table/tbody/tr[5]/td[1]"),
         ]
 
-        # List of gold items and ounces (Label, XPath, Measurement Unit)
+        # Gold and ounce values
         golds: List[tuple[str, str, str]] = [
             ("✴️ انس طلا", "/html/body/main/div[4]/div[3]/div[1]/table/tbody/tr[1]/td[1]", "دلار"),
             ("✴️ طلای 18 عیار", "/html/body/main/div[1]/div[2]/div/ul/li[5]/span[1]/span", "ریال"),
@@ -100,50 +69,58 @@ class TGJUScraper:
             ("✴️ طلای دست دوم", "/html/body/main/div[4]/div[3]/div[2]/table/tbody/tr[3]/td[1]", "ریال"),
         ]
 
-        # Target XPaths for crypto values
-        tether_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]"
-        bitcoin_xpath = "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]"
-
-        # Assemble the report lines
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین"]
 
-        # Append formatted currency values
+        # Extract currencies
         for label, xpath in currencies:
-            lines.append(f"{label}: {self._safe_text(xpath)} ریال")
+            try:
+                val = self.driver.find_element(By.XPATH, xpath).text.strip()
+                lines.append(f"{label}: {val if val else '-'} ریال")
+            except Exception:
+                lines.append(f"{label}: - ریال")
 
-        # Append formatted gold coin values
+        # Extract coins
         for label, xpath in coins:
-            lines.append(f"{label}: {self._safe_text(xpath)} ریال")
+            try:
+                val = self.driver.find_element(By.XPATH, xpath).text.strip()
+                lines.append(f"{label}: {val if val else '-'} ریال")
+            except Exception:
+                lines.append(f"{label}: - ریال")
 
-        # Append formatted physical gold metrics
+        # Extract gold
         for label, xpath, unit in golds:
-            lines.append(f"{label}: {self._safe_text(xpath)} {unit}")
+            try:
+                val = self.driver.find_element(By.XPATH, xpath).text.strip()
+                lines.append(f"{label}: {val if val else '-'} {unit}")
+            except Exception:
+                lines.append(f"{label}: - {unit}")
 
-        # Append cryptocurrency metrics
-        lines.append(f"✴️ تتر: {self._safe_text(tether_xpath)} ریال")
-        lines.append(f"✴️ بیت کوین: {self._safe_text(bitcoin_xpath)} دلار")
+        # Extract tether and bitcoin
+        try:
+            tether_val = self.driver.find_element(By.XPATH, "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[5]/td[1]").text.strip()
+            lines.append(f"✴️ تتر: {tether_val if tether_val else '-'} ریال")
+        except Exception:
+            lines.append("✴️ تتر: - ریال")
 
-        # Append the market update timestamp if valid
+        try:
+            btc_val = self.driver.find_element(By.XPATH, "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]").text.strip()
+            lines.append(f"✴️ بیت کوین: {btc_val if btc_val else '-'} دلار")
+        except Exception:
+            lines.append("✴️ بیت کوین: - دلار")
+
+        # Add market time
         if market_time != "N/A":
             lines.append(f"📅 {market_time}")
 
-        # Append target telegram channel handle
         lines.append(f"🆔 {self.CHANNEL_HANDLE}")
         return "\n".join(lines)
 
     def run(self) -> Optional[str]:
         """
-        Executes the main scraping process: navigates to the URL, awaits the
-        appearance of key dynamic elements, and extracts the final structured report.
+        Open target page and build report immediately.
         """
         try:
             self.driver.get(self.TARGET_URL)
-
-            # Smart wait: Ensure at least the first major currency (USD) is populated
-            # from '-' to actual numeric text before compiling the report.
-            usd_xpath = "/html/body/main/div[4]/div[8]/div[2]/div/div[1]/div[2]/div/div[1]/table/tbody//tr[1]/td[1]"
-            self._wait_until_text_ready(usd_xpath, timeout=15.0, poll_interval=0.3)
-
             return self.build_report()
         except Exception as exc:
             logger.exception("Scraper failed: %s", exc)
