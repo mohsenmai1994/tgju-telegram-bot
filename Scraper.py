@@ -42,7 +42,7 @@ class __webdriver__(webdriver.Chrome):
         self.set_window_size(2560, 1440)
 
     # ... بقیه متدهای find_element و read_text بدون تغییر باقی بمانند ...
-    def find_element(self, by, value=None, timeout=5):
+    def find_element(self, by, value=None, timeout=15):
         start = time.time()
         last_exception = None
         while True:
