@@ -39,7 +39,7 @@ class __webdriver__(webdriver.Chrome):
         super().__init__(options=options, service=service, keep_alive=keep_alive)
         self.set_window_size(2560, 1440)
 
-    def find_element(self, by, value=None, timeout=5):
+    def find_element(self, by, value=None, timeout=10):
         start = time.time()
         last_exception = None
         while True:
@@ -50,7 +50,7 @@ class __webdriver__(webdriver.Chrome):
                 last_exception = e
                 if time.time() - start >= timeout:
                     raise last_exception
-                time.sleep(0.05)
+                time.sleep(1)
 
     def get(self, url: str, timeout=15):
         try:
