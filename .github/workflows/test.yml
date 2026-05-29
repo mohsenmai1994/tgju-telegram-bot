@@ -1,9 +1,9 @@
-name: Test Minute Schedule
+name: test
 
 on:
   schedule:
     # Run every minute
-    - cron: '*/1 * * * *' 
+    - cron: '*/5 * * * *' 
 
 jobs:
   test:
