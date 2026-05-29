@@ -59,42 +59,29 @@ class TGJUScraper:
 
         # Extract currencies
         for label, xpath in currencies:
-            try:
-                val = self.driver.find_element(By.XPATH, xpath).text.strip()
-                lines.append(f"{label}: {val} ریال")
-            except Exception:
-                lines.append(f"{label}: - ریال")
+            val = self.driver.find_element(By.XPATH, xpath).text.strip()
+            lines.append(f"{label}: {val} ریال")
                 
         time.sleep(2)
         self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[2]").click()
 
         # Extract coins
         for label, xpath in coins:
-            try:
-                val = self.driver.find_element(By.XPATH, xpath).text.strip()
-                lines.append(f"{label}: {val} ریال")
-            except Exception:
-                lines.append(f"{label}: - ریال")
+            val = self.driver.find_element(By.XPATH, xpath).text.strip()
+            lines.append(f"{label}: {val} ریال")
 
         # Extract gold
         for label, xpath, unit in golds:
-            try:
-                val = self.driver.find_element(By.XPATH, xpath).text.strip()
-                lines.append(f"{label}: {val} {unit}")
-            except Exception:
-                lines.append(f"{label}: - {unit}")
+            val = self.driver.find_element(By.XPATH, xpath).text.strip()
+            lines.append(f"{label}: {val} {unit}")
                 
         time.sleep(2)
         self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[3]").click()
         
         # Extract bitcoin
         
-        
-        try:
-            btc_val = self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]").text.strip()
-            lines.append(f"✴️ بیت کوین: {btc_val} دلار")
-        except Exception:
-            lines.append("✴️ بیت کوین: - دلار")
+        btc_val = self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]").text.strip()
+        lines.append(f"✴️ بیت کوین: {btc_val} دلار")
 
 
 
@@ -105,12 +92,8 @@ class TGJUScraper:
         """
         Open target page and build report immediately.
         """
-        try:
-            self.driver.get(self.TARGET_URL)
-            return self.build_report()
-        except Exception as exc:
-            logger.exception("Scraper failed: %s", exc)
-            return None
+        self.driver.get(self.TARGET_URL)
+        return self.build_report()
 
 browser = __webdriver__()
 scraper = TGJUScraper(browser)
