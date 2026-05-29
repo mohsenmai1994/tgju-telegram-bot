@@ -5,7 +5,6 @@ on:
     # Runs every hour at :30 UTC from 06:30 to 18:30,
     # which corresponds to 10:00–22:00 Iran time (UTC+3:30).
     - cron: '30 6-18 * * *'
-  workflow_dispatch:
 
 concurrency:
   group: telegram-scraper
