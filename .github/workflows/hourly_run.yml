@@ -1,5 +1,5 @@
 # Workflow name
-name: Hourly Telegram Scraper
+name: hourly_run
 
 # Defines when the workflow runs
 on:
