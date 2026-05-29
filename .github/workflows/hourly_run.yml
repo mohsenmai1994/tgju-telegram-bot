@@ -2,9 +2,9 @@ name: Hourly Telegram Scraper
 
 on:
   schedule:
-    # Executes once per hour between 06:00 and 18:00 UTC,
-    # corresponding approximately to 09:30–21:30 Iran local time.
-    - cron: '0 6-18 * * *'
+    # Runs every hour at :30 UTC from 06:30 to 18:30,
+    # which corresponds to 10:00–22:00 Iran time (UTC+3:30).
+    - cron: '30 6-18 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -14,8 +14,6 @@ concurrency:
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
-    # Terminates the job after 7 minutes to prevent unnecessary quota consumption
-    # in the event of a hang, infinite loop, or external service delay.
     timeout-minutes: 7
 
     steps:
@@ -26,7 +24,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'  # Enables pip cache to reduce dependency installation time in subsequent runs.
+          cache: 'pip'
 
       - name: Install Python dependencies
         run: |
