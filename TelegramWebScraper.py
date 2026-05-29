@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Final, List, Optional
-
+import time
 from selenium.webdriver.common.by import By
 from Scraper import __webdriver__
 
@@ -30,13 +30,6 @@ class TGJUScraper:
         Extract market data from the page directly without helper methods.
         If an element is missing, it defaults to '-'.
         """
-        # Read market update time from the header
-        try:
-            market_time_el = self.driver.find_element(By.XPATH, "/html/body/div[2]/header/div[4]/div[2]/div[2]/div/span")
-            market_time = market_time_el.text.strip() if market_time_el.text.strip() else "N/A"
-        except Exception:
-            market_time = "N/A"
-
         # Currency values
         currencies: List[tuple[str, str]] = [
             ("☸️ دلار آمريکا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]"),
@@ -71,7 +64,8 @@ class TGJUScraper:
                 lines.append(f"{label}: {val} ریال")
             except Exception:
                 lines.append(f"{label}: - ریال")
-
+                
+        time.sleep(2)
         self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[2]").click()
 
         # Extract coins
@@ -89,7 +83,8 @@ class TGJUScraper:
                 lines.append(f"{label}: {val} {unit}")
             except Exception:
                 lines.append(f"{label}: - {unit}")
-  
+                
+        time.sleep(2)
         self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[3]").click()
         
         # Extract bitcoin
