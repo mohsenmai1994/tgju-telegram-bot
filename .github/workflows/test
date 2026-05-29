@@ -1,0 +1,13 @@
+name: Test Minute Schedule
+
+on:
+  schedule:
+    # Run every minute
+    - cron: '*/1 * * * *' 
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print current time
+        run: echo "This job ran at $(date)"
