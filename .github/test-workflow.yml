@@ -1,0 +1,12 @@
+    name: Test Workflow
+
+    on:
+      push:
+        branches: [ main ] # یا نام برنچ پیش‌فرض شما
+
+    jobs:
+      test:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Print a message
+            run: echo "Hello from test workflow!"
