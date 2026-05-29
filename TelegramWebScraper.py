@@ -57,6 +57,7 @@ class TGJUScraper:
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
 
+        time.sleep(5)
         # Extract currencies
         for label, xpath in currencies:
             val = self.driver.find_element(By.XPATH, xpath).text.strip()
