@@ -68,7 +68,7 @@ class TGJUScraper:
         for label, xpath in currencies:
             try:
                 val = self.driver.find_element(By.XPATH, xpath).text.strip()
-                lines.append(f"{label}: {val if val else '-'} ریال")
+                lines.append(f"{label}: {val} ریال")
             except Exception:
                 lines.append(f"{label}: - ریال")
 
@@ -78,7 +78,7 @@ class TGJUScraper:
         for label, xpath in coins:
             try:
                 val = self.driver.find_element(By.XPATH, xpath).text.strip()
-                lines.append(f"{label}: {val if val else '-'} ریال")
+                lines.append(f"{label}: {val} ریال")
             except Exception:
                 lines.append(f"{label}: - ریال")
 
@@ -86,7 +86,7 @@ class TGJUScraper:
         for label, xpath, unit in golds:
             try:
                 val = self.driver.find_element(By.XPATH, xpath).text.strip()
-                lines.append(f"{label}: {val if val else '-'} {unit}")
+                lines.append(f"{label}: {val} {unit}")
             except Exception:
                 lines.append(f"{label}: - {unit}")
   
@@ -97,7 +97,7 @@ class TGJUScraper:
         
         try:
             btc_val = self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]").text.strip()
-            lines.append(f"✴️ بیت کوین: {btc_val if btc_val else '-'} دلار")
+            lines.append(f"✴️ بیت کوین: {btc_val} دلار")
         except Exception:
             lines.append("✴️ بیت کوین: - دلار")
 
