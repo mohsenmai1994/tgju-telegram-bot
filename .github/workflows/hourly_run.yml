@@ -3,68 +3,50 @@ name: Hourly Telegram Scraper
 
 # Defines when the workflow runs
 on:
-  # Allows the workflow to be run manually from the Actions tab
+  # Allows the workflow to be triggered manually or via the GitHub API
   workflow_dispatch:
 
-  # Defines scheduled intervals for running the workflow
-  schedule:
-    # This cron expression is set to run exactly on the hour, every hour between 10:00 AM and 10:00 PM Iran Time (UTC+3:30).
-    # Iran Standard Time (IRST) is UTC+3:30.
-    # To cover 10:00 to 22:00 IRST exactly on the hour, we need to cover 07:00 to 19:00 UTC.
-    # '0 7-19 * * *' means:
-    # 0: Run exactly at minute 0 of the hour.
-    # 7-19: Run during hours 7 through 19 (UTC).
-    # * * *: Run every day of the month, every month, and every day of the week.
-    - cron: '*/5 * * * *'
-  
 # Defines concurrency rules to manage simultaneous workflow runs
 concurrency:
-  # Groups runs by the name 'telegram-scraper', ensuring only one run can execute at a time for this group.
+  # Ensures that only one scraper run is active at a time
   group: telegram-scraper
-  # If a new run starts while another is in progress, the existing one will be cancelled.
+  # Cancels any in-progress run if a new one is triggered
   cancel-in-progress: true
 
 # Defines the jobs that will be executed
 jobs:
   run-scraper:
-    # Specifies the runner environment (operating system and architecture). Ubuntu 22.04 LTS is used here.
+    # Specifies the runner environment
     runs-on: ubuntu-latest
-    # Sets a timeout for the job; if it exceeds 7 minutes, it will be cancelled.
+    # Prevents the job from running indefinitely
     timeout-minutes: 7
 
-    # Defines the steps to be executed within the job
+    # Defines the sequence of execution steps
     steps:
-      # Step 1: Checks out the repository code from GitHub.
-      # Uses the official 'actions/checkout' action, version 4.
+      # Step 1: Check out repository contents
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Sets up the Python environment.
-      # Uses the official 'actions/setup-python' action, version 5.
+      # Step 2: Set up the required Python runtime
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          # Specifies the Python version to be used.
+          # Uses Python 3.11 for compatibility and stability
           python-version: '3.11'
-          # Enables caching of pip dependencies to speed up subsequent runs.
+          # Caches pip packages to improve workflow performance
           cache: 'pip'
 
-      # Step 3: Installs the Python dependencies.
+      # Step 3: Install project dependencies
       - name: Install Python dependencies
-        # Runs commands in a shell.
         run: |
-          # Ensures pip is up-to-date.
           python -m pip install --upgrade pip
-          # Installs all packages listed in requirements.txt.
           pip install -r requirements.txt
 
-      # Step 4: Runs the main Python scraper script.
+      # Step 4: Run the main scraper script
       - name: Run scraper
-        # Defines environment variables that will be available to the script.
         env:
-          # BOT_TOKEN and CHAT_ID are fetched from GitHub secrets.
+          # Inject secrets securely into the runtime environment
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
-        # Executes the main Python script.
         run: |
           python main.py
