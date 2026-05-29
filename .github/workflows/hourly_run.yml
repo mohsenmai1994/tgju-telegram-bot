@@ -1,40 +1,70 @@
+# Workflow name
 name: Hourly Telegram Scraper
 
+# Defines when the workflow runs
 on:
-  schedule:
-    # Runs every minute for testing purposes.
-    # Original: Runs every hour at :30 UTC from 06:30 to 18:30,
-    # which corresponds to 10:00–22:00 Iran time (UTC+3:30).
-    - cron: '* * * * *'
-  workflow_dispatch: # این خط را اضافه کردم تا بتوانی دستی هم اجرا کنی
+  # Allows the workflow to be run manually from the Actions tab
+  workflow_dispatch:
 
+  # Defines scheduled intervals for running the workflow
+  schedule:
+    # This cron expression is set to run exactly on the hour, every hour between 10:00 AM and 10:00 PM Iran Time (UTC+3:30).
+    # Iran Standard Time (IRST) is UTC+3:30.
+    # To cover 10:00 to 22:00 IRST exactly on the hour, we need to cover 07:00 to 19:00 UTC.
+    # '0 7-19 * * *' means:
+    # 0: Run exactly at minute 0 of the hour.
+    # 7-19: Run during hours 7 through 19 (UTC).
+    # * * *: Run every day of the month, every month, and every day of the week.
+    - cron: '0 7-19 * * *'
+  
+# Defines concurrency rules to manage simultaneous workflow runs
 concurrency:
+  # Groups runs by the name 'telegram-scraper', ensuring only one run can execute at a time for this group.
   group: telegram-scraper
+  # If a new run starts while another is in progress, the existing one will be cancelled.
   cancel-in-progress: true
 
+# Defines the jobs that will be executed
 jobs:
   run-scraper:
+    # Specifies the runner environment (operating system and architecture). Ubuntu 22.04 LTS is used here.
     runs-on: ubuntu-latest
+    # Sets a timeout for the job; if it exceeds 7 minutes, it will be cancelled.
     timeout-minutes: 7
 
+    # Defines the steps to be executed within the job
     steps:
+      # Step 1: Checks out the repository code from GitHub.
+      # Uses the official 'actions/checkout' action, version 4.
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Step 2: Sets up the Python environment.
+      # Uses the official 'actions/setup-python' action, version 5.
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
+          # Specifies the Python version to be used.
           python-version: '3.11'
+          # Enables caching of pip dependencies to speed up subsequent runs.
           cache: 'pip'
 
+      # Step 3: Installs the Python dependencies.
       - name: Install Python dependencies
+        # Runs commands in a shell.
         run: |
+          # Ensures pip is up-to-date.
           python -m pip install --upgrade pip
+          # Installs all packages listed in requirements.txt.
           pip install -r requirements.txt
 
+      # Step 4: Runs the main Python scraper script.
       - name: Run scraper
+        # Defines environment variables that will be available to the script.
         env:
+          # BOT_TOKEN and CHAT_ID are fetched from GitHub secrets.
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+        # Executes the main Python script.
         run: |
           python main.py
