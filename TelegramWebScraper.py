@@ -35,7 +35,7 @@ class TGJUScraper:
             ("☸️ دلار آمريکا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]"),
             ("☸️ یورو", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[2]/div[3]/div[1]"),
             ("☸️ پوند انگلیس", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[4]/div[3]/div[1]"),
-            ("☸️ لیر ترکیه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
+            ("☸️ لیر ترکیه", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[5]/div[3]/div[1]"),
             ("☸️ فرانک سوئیس", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[10]/div[3]/div[1]"),
             ("☸️ یوان چین", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[6]/div[3]/div[1]"),
             ("☸️ ین ژاپن", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[7]/div[3]/div[1]"),
