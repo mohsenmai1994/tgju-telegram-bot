@@ -44,16 +44,16 @@ class TGJUScraper:
 
         # Coin values
         coins: List[tuple[str, str]] = [
-            ("✴️ سکه بهار آزادی", "/html/body/main/section[1]/table/tbody/tr[4]/td[2]/text()"),
-            ("✴️ نیم سکه", "/html/body/main/section[1]/table/tbody/tr[4]/td[3]/text()"),
-            ("✴️ ربع سکه", "/html/body/main/section[1]/table/tbody/tr[6]/td[2]/text()")
+            ("✴️ سکه بهار آزادی", "/html/body/main/section[1]/table/tbody/tr[4]/td[2]"),
+            ("✴️ نیم سکه", "/html/body/main/section[1]/table/tbody/tr[4]/td[3]"),
+            ("✴️ ربع سکه", "/html/body/main/section[1]/table/tbody/tr[6]/td[2]")
             
         ]
 
         # Gold and ounce values
         golds: List[tuple[str, str, str]] = [
-            ("✴️ انس طلا", "/html/body/main/section[1]/table/tbody/tr[8]/td[2]/text()", ""),
-            ("✴️ طلای 18 عیار", "/html/body/main/section[1]/table/tbody/tr[2]/td[2]/text()]", "ریال")
+            ("✴️ انس طلا", "/html/body/main/section[1]/table/tbody/tr[8]/td[2]", ""),
+            ("✴️ طلای 18 عیار", "/html/body/main/section[1]/table/tbody/tr[2]/td[2]]", "ریال")
         ]
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
