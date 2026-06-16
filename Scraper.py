@@ -23,6 +23,13 @@ class __webdriver__(webdriver.Chrome):
             options.add_argument(f"--user-agent={USER_AGENT}")
             options.add_argument("--window-size=2560,1440")
             options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+            options.add_argument('--headless')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            # This is crucial to look like a real browser
+            options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36')
+            # Disable the "AutomationControlled" flag
+            options.add_argument('--disable-blink-features=AutomationControlled')
 
         super().__init__(options=options, service=service, keep_alive=keep_alive)
         self.set_window_size(2560, 1440)
