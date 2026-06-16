@@ -30,6 +30,7 @@ class TGJUScraper:
         Extract market data from the page directly without helper methods.
         If an element is missing, it defaults to '-'.
         """
+        time.sleep(5)
         # Currency values
         currencies: List[tuple[str, str]] = [
             ("☸️ دلار آمريکا", "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]"),
