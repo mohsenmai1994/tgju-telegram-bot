@@ -66,7 +66,7 @@ class TGJUScraper:
             lines.append(f"{label}: {val} ریال")
                 
         time.sleep(2)
-        self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[2]").click()
+
 
         # Extract coins
         for label, xpath in coins:
@@ -79,11 +79,9 @@ class TGJUScraper:
             lines.append(f"{label}: {val} {unit}")
                 
         time.sleep(2)
-        self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/header/div/a[3]").click()
-        
         # Extract bitcoin
         
-        btc_val = self.driver.find_element(By.XPATH, "/html/body/app-root/div/main/ng-component/main/ng-component/main/div/div[3]/div/div/div[1]/div[3]/div[1]").text.strip()
+        btc_val = self.driver.find_element(By.XPATH, "/html/body/main/div[8]/div/div/div[1]/div[2]/table/tbody/tr[1]/td[2]").text.strip()
         lines.append(f"✴️ بیت کوین: {btc_val} دلار")
 
 
