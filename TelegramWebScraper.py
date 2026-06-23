@@ -22,9 +22,10 @@ logger = logging.getLogger("TGJU_Scraper")
 
 def clean_number(text: str) -> str:
     """
-    Remove everything except digits.
-    Also converts Persian digits to English.
+    Keep digits and thousand separators.
+    Converts Persian digits to English.
     """
+
     if not text:
         return "-"
 
@@ -33,11 +34,12 @@ def clean_number(text: str) -> str:
     for i, d in enumerate(persian_digits):
         text = text.replace(d, str(i))
 
-    # remove separators
-    text = text.replace(",", "").replace("٬", "")
+    # unify thousand separator
+    text = text.replace("٬", ",")
 
-    # keep only digits
-    return re.sub(r"\D", "", text)
+    # keep only digits and comma
+    return re.sub(r"[^\d,]", "", text)
+
 
 
 class TGJUScraper:
