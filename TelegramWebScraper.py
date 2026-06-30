@@ -80,7 +80,7 @@ class TGJUScraper:
 
         golds: List[tuple[str, str, str]] = [
             ("✴️ انس طلا", "/html/body/main/section/table/tbody/tr[8]/td[2]", ""),
-            ("✴️ طلای 18 عیار", "/html/body/main/section[1]/table/tbody/tr[2]/td[2]", "تومان")
+            ("✴️ طلای 18 عیار", "/html/body/main/section[1]/table/tbody/tr[2]/td[2]", "")
         ]
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
@@ -99,7 +99,7 @@ class TGJUScraper:
         # Coins
         for label, xpath in coins:
             val = self.get_value(xpath)
-            lines.append(f"{label}: {val} تومان")
+            lines.append(f"{label}: {val}")
 
         # Gold
         for label, xpath, unit in golds:
@@ -116,7 +116,7 @@ class TGJUScraper:
 
         # Tether
         tether_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[1]/td[2]/span[1]")
-        lines.append(f"✴️ تتر : {tether_val} تومان")
+        lines.append(f"✴️ تتر : {tether_val}")
 
         lines.append(f"\n🆔 {self.CHANNEL_HANDLE}")
 
