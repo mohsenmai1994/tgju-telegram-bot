@@ -90,7 +90,7 @@ class TGJUScraper:
         # Currencies
         for label, xpath in currencies:
             val = self.get_value(xpath)
-            lines.append(f"{label}: {val} تومان")
+            lines.append(f"{label}: {val}")
 
         # Go to coins page
         self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[3]").click()
