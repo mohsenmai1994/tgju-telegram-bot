@@ -74,7 +74,7 @@ class TGJUScraper:
 
         coins: List[tuple[str, str]] = [
             ("✴️ سکه بهار آزادی", "/html/body/main/section[1]/table/tbody/tr[4]/td[2]"),
-            ("✴️ نیم سکه", "/html/body/main/section[1]/table/tbody/tr[4]/td[۴]"),
+            ("✴️ نیم سکه", "/html/body/main/section[1]/table/tbody/tr[4]/td[4]"),
             ("✴️ ربع سکه", "/html/body/main/section[1]/table/tbody/tr[6]/td[2]")
         ]
 
