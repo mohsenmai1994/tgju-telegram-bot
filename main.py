@@ -51,10 +51,11 @@ def execution_cycle() -> None:
     tehran_tz = pytz.timezone("Asia/Tehran")
     now_tehran = datetime.now(tehran_tz)
 
+    """
     if not (11 <= now_tehran.hour < 23):
         logging.info("Outside Tehran working hours (09:00-20:59). Skipping run.")
         return
-
+   """
     logging.info("Pipeline started.")
 
     browser = None
