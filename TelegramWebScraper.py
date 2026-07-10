@@ -46,7 +46,7 @@ class TGJUScraper:
     TARGET_URL: Final[str] = "https://alanchand.com/en/currencies-price"
     BASE_DIR: Final[Path] = Path(__file__).parent
     FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
-    CHANNEL_HANDLE: Final[str] = "@aghayebazar_official"
+    CHANNEL_HANDLE: Final[str] = "@CurrencyTel"
 
     def __init__(self, driver) -> None:
         self.driver = driver
