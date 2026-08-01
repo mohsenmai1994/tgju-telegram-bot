@@ -131,4 +131,11 @@ browser = __webdriver__()
 scraper = TGJUScraper(browser)
 content = scraper.run()
 
+if content is not None:
+    scraper.FILE_PATH.write_text(content, encoding="utf-8")
+    logger.info("Report saved to %s", scraper.FILE_PATH)
+
+
 print(content)
+
+
