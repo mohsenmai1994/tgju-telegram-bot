@@ -20,6 +20,10 @@ jobs:
     runs-on: ubuntu-latest
     # Prevents the job from running indefinitely
     timeout-minutes: 7
+    
+    # Allows the workflow to push changes back to the repository
+    permissions:
+      contents: write
 
     # Defines the sequence of execution steps
     steps:
@@ -50,3 +54,15 @@ jobs:
           CHAT_ID: ${{ secrets.CHAT_ID }}
         run: |
           python main.py
+
+      # Step 5: Commit and Push the market_log.txt file to the repository
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # اگر فایل در پوشه فرعی نیست، همین خط کافی است. 
+          # اگر فایل داخل پوشه دیگری ذخیره می‌شود، مسیر آن را جایگزین کنید (مثلا Scraper/market_log.txt)
+          git add market_log.txt
+          
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update market log [skip ci]" && git push)
