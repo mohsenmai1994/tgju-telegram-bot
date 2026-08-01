@@ -1,68 +1,140 @@
-import time
-import os
-import platform
+from __future__ import annotations
+
+import logging
+import re
 from pathlib import Path
-from typing import Final
-from selenium import webdriver
+from typing import Final, List, Optional
+import time
+
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.common.exceptions import NoSuchElementException
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+from Scraper import __webdriver__
 
-BASE_DIR: Final[Path] = Path(__file__).parent
 
-class __webdriver__(webdriver.Chrome):
-    def __init__(self, options=None, service=None, keep_alive=True):
-        if options is None:
-            options = webdriver.ChromeOptions()
-            
-            # ۱. تنظیمات پایه‌ای اجرا در حالت بدون گرافیک (Headless)
-            options.add_argument("--headless=new")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-gpu")
-            
-            # ۲. غیرفعال کردن لود تصاویر و استایل‌ها برای افزایش چشمگیر سرعت لود صفحات
-            options.add_argument("--blink-settings=imagesEnabled=false")
-            
-            # ۳. غیرفعال کردن اکستنشن‌ها، ابزارهای اضافه و نوتیفیکیشن‌ها برای صرفه‌جویی در منابع
-            options.add_argument("--disable-extensions")
-            options.add_argument("--disable-notifications")
-            options.add_argument("--disable-popup-blocking")
-            options.add_argument("--disable-impl-side-painting")
-            options.add_argument("--disable-setuid-sandbox")
-            options.add_argument("--disable-web-security")
-            
-            # ۴. هویت و ابعاد پنجره (شبیه‌سازی مرورگر واقعی)
-            options.add_argument(f"--user-agent={USER_AGENT}")
-            options.add_argument("--window-size=2560,1440")
-            
-            # ۵. غیرفعال کردن شناسایی به عنوان ربات و خاموش کردن لاگ‌های سیستمی کروم
-            options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-            options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument('--disable-blink-features=AutomationControlled')
-            options.add_argument('--dns-prefetch-disable')
+# Configure logger
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger("TGJU_Scraper")
 
-        super().__init__(options=options, service=service, keep_alive=keep_alive)
-        self.set_window_size(2560, 1440)
 
-    def find_element(self, by, value=None, timeout=5):
-        start = time.time()
-        last_exception = None
-        while True:
-            try:
-                element = super().find_element(by, value)
-                return element
-            except Exception as e:
-                last_exception = e
-                if time.time() - start >= timeout:
-                    raise last_exception
-                time.sleep(0.05)
+def clean_number(text: str) -> str:
+    """
+    Keep digits and thousand separators.
+    Converts Persian digits to English.
+    """
 
-    def get(self, url: str, timeout=15):
+    if not text:
+        return "-"
+
+    # Persian → English digits
+    persian_digits = "۰۱۲۳۴۵۶۷۸۹"
+    for i, d in enumerate(persian_digits):
+        text = text.replace(d, str(i))
+
+    # unify thousand separator
+    text = text.replace("٬", ",")
+
+    # keep only digits and comma
+    return re.sub(r"[^\d,\.]", "", text)
+
+
+
+class TGJUScraper:
+    TARGET_URL: Final[str] = "https://alanchand.com/en/currencies-price"
+    BASE_DIR: Final[Path] = Path(__file__).parent
+    FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
+    CHANNEL_HANDLE: Final[str] = "@CurrencyTel"
+
+    def __init__(self, driver) -> None:
+        self.driver = driver
+
+    def get_value(self, xpath: str) -> str:
+        """Safely get and clean number from page"""
         try:
-            super().get(url)
-            # صبر برای لود کامل DOM (در صورت نیاز می‌توانید به ۰.۵ یا ۱ ثانیه کاهش دهید تا سریع‌تر شود)
-            time.sleep(1) 
-        except Exception as e:
-            print(f"Error loading page: {e}")
+            raw = self.driver.find_element(By.XPATH, xpath).text.strip()
+            return clean_number(raw)
+        except NoSuchElementException:
+            logger.warning(f"Element not found: {xpath}")
+            return "-"
+
+    def build_report(self) -> str:
+        time.sleep(5)
+
+        currencies: List[tuple[str, str]] = [
+            ("☸️ دلار آمريکا", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[1]/td[3]"),
+            ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[2]/td[3]"),
+            ("☸️ پوند انگلیس", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[5]/td[3]"),
+            ("☸️ لیر ترکیه", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[4]/td[3]"),
+            ("☸️ فرانک سوئیس", "/html/body/main/section[2]/div/div[2]/table/tbody/tr[1]/td[3]"),
+            ("☸️ یوان چین", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[6]/td[3]")
+        ]
+
+        coins: List[tuple[str, str]] = [
+            ("✴️ سکه بهار آزادی", "/html/body/main/section[1]/table/tbody/tr[4]/td[2]"),
+            ("✴️ نیم سکه", "/html/body/main/section[1]/table/tbody/tr[5]/td[3]"),
+            ("✴️ ربع سکه", "/html/body/main/section[1]/table/tbody/tr[6]/td[2]")
+        ]
+
+        golds: List[tuple[str, str, str]] = [
+            ("✴️ انس طلا", "/html/body/main/section/table/tbody/tr[8]/td[2]", ""),
+            ("✴️ طلای 18 عیار", "/html/body/main/section[1]/table/tbody/tr[2]/td[2]", "")
+        ]
+
+        lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
+
+        time.sleep(5)
+
+        # Currencies
+        for label, xpath in currencies:
+            val = self.get_value(xpath)
+            lines.append(f"{label}: {val}")
+
+        # Go to coins page
+        self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[3]").click()
+        time.sleep(5)
+
+        # Coins
+        for label, xpath in coins:
+            val = self.get_value(xpath)
+            lines.append(f"{label}: {val}")
+
+        # Gold
+        for label, xpath, unit in golds:
+            val = self.get_value(xpath)
+            lines.append(f"{label}: {val} {unit}")
+
+        # Go to crypto page
+        self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[2]").click()
+        time.sleep(5)
+
+        # Bitcoin
+        btc_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[2]/td[3]/span[3]")
+        lines.append(f"✴️ بیت کوین: {btc_val} دلار")
+
+        # Tether
+        tether_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[1]/td[2]/span[1]")
+        lines.append(f"✴️ تتر : {tether_val}")
+
+        lines.append(f"\n🆔 {self.CHANNEL_HANDLE}")
+
+        return "\n".join(lines)
+
+    def run(self) -> Optional[str]:
+        self.driver.get(self.TARGET_URL)
+        return self.build_report()
+
+
+browser = __webdriver__()
+scraper = TGJUScraper(browser)
+content = scraper.run()
+
+if content is not None:
+    scraper.FILE_PATH.write_text(content, encoding="utf-8")
+    logger.info("Report saved to %s", scraper.FILE_PATH)
+
+
+print(content)
+
