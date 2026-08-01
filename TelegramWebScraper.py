@@ -4,7 +4,6 @@ import logging
 import re
 from pathlib import Path
 from typing import Final, List, Optional
-import time
 
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
@@ -12,7 +11,6 @@ from selenium.common.exceptions import NoSuchElementException
 from Scraper import __webdriver__
 
 
-# Configure logger
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -21,25 +19,15 @@ logger = logging.getLogger("TGJU_Scraper")
 
 
 def clean_number(text: str) -> str:
-    """
-    Keep digits and thousand separators.
-    Converts Persian digits to English.
-    """
-
     if not text:
         return "-"
 
-    # Persian → English digits
     persian_digits = "۰۱۲۳۴۵۶۷۸۹"
     for i, d in enumerate(persian_digits):
         text = text.replace(d, str(i))
 
-    # unify thousand separator
     text = text.replace("٬", ",")
-
-    # keep only digits and comma
     return re.sub(r"[^\d,\.]", "", text)
-
 
 
 class TGJUScraper:
@@ -52,7 +40,6 @@ class TGJUScraper:
         self.driver = driver
 
     def get_value(self, xpath: str) -> str:
-        """Safely get and clean number from page"""
         try:
             raw = self.driver.find_element(By.XPATH, xpath).text.strip()
             return clean_number(raw)
@@ -61,8 +48,6 @@ class TGJUScraper:
             return "-"
 
     def build_report(self) -> str:
-        time.sleep(5)
-
         currencies: List[tuple[str, str]] = [
             ("☸️ دلار آمريکا", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[1]/td[3]"),
             ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[2]/td[3]"),
@@ -85,36 +70,25 @@ class TGJUScraper:
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
 
-        time.sleep(5)
-
-        # Currencies
         for label, xpath in currencies:
             val = self.get_value(xpath)
             lines.append(f"{label}: {val}")
 
-        # Go to coins page
         self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[3]").click()
-        time.sleep(5)
 
-        # Coins
         for label, xpath in coins:
             val = self.get_value(xpath)
             lines.append(f"{label}: {val}")
 
-        # Gold
         for label, xpath, unit in golds:
             val = self.get_value(xpath)
             lines.append(f"{label}: {val} {unit}")
 
-        # Go to crypto page
         self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[2]").click()
-        time.sleep(5)
 
-        # Bitcoin
         btc_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[2]/td[3]/span[3]")
         lines.append(f"✴️ بیت کوین: {btc_val} دلار")
 
-        # Tether
         tether_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[1]/td[2]/span[1]")
         lines.append(f"✴️ تتر : {tether_val}")
 
@@ -135,6 +109,5 @@ if content is not None:
     scraper.FILE_PATH.write_text(content, encoding="utf-8")
     logger.info("Report saved to %s", scraper.FILE_PATH)
 
-
 print(content)
-
+browser.quit()
