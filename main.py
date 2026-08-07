@@ -26,7 +26,7 @@ FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
 
 # Retrieve environment variables for secure Telegram API credentials
 BOT_TOKEN: Final[Optional[str]] = os.getenv("BOT_TOKEN")
-CHAT_ID: Final[Optional[str]] = os.getenv("CHAT_ID_CURRENCYTEL")
+CHAT_ID_CURRENCYTEL: Final[Optional[str]] = os.getenv("CHAT_ID_CURRENCYTEL")
 
 
 def transmit_to_telegram(message_payload: str) -> None:
@@ -45,12 +45,12 @@ def transmit_to_telegram(message_payload: str) -> None:
         requests.Timeout: If the connection to the API endpoint exceeds the threshold.
         requests.RequestException: For underlying network, transport, or HTTP response errors.
     """
-    if not BOT_TOKEN or not CHAT_ID:
-        raise RuntimeError("Missing BOT_TOKEN or CHAT_ID environment variables.")
+    if not BOT_TOKEN or not CHAT_ID_CURRENCYTEL:
+        raise RuntimeError("Missing BOT_TOKEN or CHAT_ID_CURRENCYTEL environment variables.")
 
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
-        "chat_id": CHAT_ID,
+        "chat_id": CHAT_ID_CURRENCYTEL,
         "text": message_payload,
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
