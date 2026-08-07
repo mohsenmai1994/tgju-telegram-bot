@@ -28,8 +28,8 @@ FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
 BOT_TOKEN: Final[Optional[str]] = os.getenv("BOT_TOKEN")
 
 # دریافت آی‌دی‌ها با امکان Fallback به متغیر قدیمی CHAT_ID در صورت نیاز
-CHAT_ID_CURRENCYTEL: Final[Optional[str]] = os.getenv("CHAT_ID_CURRENCYTEL") or os.getenv("CHAT_ID")
-CHAT_ID_ZVTNI_TIMES: Final[Optional[str]] = os.getenv("CHAT_ID_ZVTNI_TIMES")
+CHAT_ID_CURRENCYTEL: Final[Optional[str]] = "@CurrencyTel"
+CHAT_ID_ZVTNI_TIMES: Final[Optional[str]] = "@GoldCoinT"
 
 
 def normalize_chat_id(chat_id: str) -> str:
