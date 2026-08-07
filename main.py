@@ -26,7 +26,7 @@ FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
 
 # Retrieve environment variables for secure Telegram API credentials
 BOT_TOKEN: Final[Optional[str]] = os.getenv("BOT_TOKEN")
-CHAT_ID: Final[Optional[str]] = os.getenv("CHAT_ID")
+CHAT_ID: Final[Optional[str]] = os.getenv("CHAT_ID_CURRENCYTEL")
 
 
 def transmit_to_telegram(message_payload: str) -> None:
