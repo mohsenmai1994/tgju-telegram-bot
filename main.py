@@ -26,31 +26,36 @@ FILE_PATH: Final[Path] = BASE_DIR / "market_log.txt"
 
 # Retrieve environment variables for secure Telegram API credentials
 BOT_TOKEN: Final[Optional[str]] = os.getenv("BOT_TOKEN")
-CHAT_ID_CURRENCYTEL: Final[Optional[str]] = os.getenv("CHAT_ID_CURRENCYTEL")
+
+# دریافت آی‌دی‌ها با امکان Fallback به متغیر قدیمی CHAT_ID در صورت نیاز
+CHAT_ID_CURRENCYTEL: Final[Optional[str]] = os.getenv("CHAT_ID_CURRENCYTEL") or os.getenv("CHAT_ID")
+CHAT_ID_ZVTNI_TIMES: Final[Optional[str]] = os.getenv("CHAT_ID_ZVTNI_TIMES")
 
 
-def transmit_to_telegram(message_payload: str) -> None:
+def normalize_chat_id(chat_id: str) -> str:
+    """
+    نرمال‌سازی چت آی‌دی: اگر با -100 شروع نشود و علامت @ نداشته باشد،
+    یک @ به ابتدای آن اضافه می‌کند.
+    """
+    chat_id = chat_id.strip()
+    if not chat_id.startswith("-100") and not chat_id.startswith("@"):
+        return f"@{chat_id}"
+    return chat_id
+
+
+def transmit_to_telegram(message_payload: str, chat_id: str) -> None:
     """
     Transmits the generated report to a designated Telegram channel or chat.
-
-    This function issues a synchronous HTTP POST request to the Telegram Bot API.
-    It formats the payload as HTML and disables automatic link previews to clean up
-    the layout of the message.
-
-    Args:
-        message_payload (str): The structured text report to be transmitted.
-
-    Raises:
-        RuntimeError: If necessary credentials (BOT_TOKEN, CHAT_ID) are missing from the env.
-        requests.Timeout: If the connection to the API endpoint exceeds the threshold.
-        requests.RequestException: For underlying network, transport, or HTTP response errors.
     """
-    if not BOT_TOKEN or not CHAT_ID_CURRENCYTEL:
-        raise RuntimeError("Missing BOT_TOKEN or CHAT_ID_CURRENCYTEL environment variables.")
+    if not BOT_TOKEN:
+        raise RuntimeError("Missing BOT_TOKEN environment variable.")
 
+    # نرمال‌سازی آی‌دی برای پیشگیری از خطای تلگرام
+    normalized_id = normalize_chat_id(chat_id)
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    
     payload = {
-        "chat_id": CHAT_ID_CURRENCYTEL,
+        "chat_id": normalized_id,
         "text": message_payload,
         "parse_mode": "HTML",
         "disable_web_page_preview": True,
@@ -59,25 +64,21 @@ def transmit_to_telegram(message_payload: str) -> None:
     try:
         response = requests.post(url, data=payload, timeout=15)
         response.raise_for_status()
-        logging.info("Telegram message sent successfully.")
+        logging.info(f"Telegram message sent successfully to {normalized_id}")
     except requests.Timeout:
-        logging.error("Telegram request timed out.")
+        logging.error(f"Telegram request timed out for {normalized_id}")
         raise
     except requests.RequestException as exc:
-        logging.exception("Failed to send Telegram message: %s", exc)
+        # در صورت خطا، پاسخ سرور تلگرام را لاگ می‌کند تا علت دقیق مشخص شود (مثلاً ادمین نبودن ربات)
+        if exc.response is not None:
+            logging.error(f"Telegram API error response: {exc.response.text}")
+        logging.exception(f"Failed to send Telegram message to {normalized_id}: {exc}")
         raise
 
 
 def execution_cycle() -> None:
     """
     Orchestrates the scraping pipeline execution sequence.
-
-    This routine performs the following sequential actions:
-    1. Initializes the isolated Selenium WebDriver instance.
-    2. Runs the web scraping routine on the target domain.
-    3. Persists the parsed data to a local text file on the disk (I/O).
-    4. dispatches the payload to the remote Telegram server.
-    5. Guarantees the destruction of the WebDriver process to prevent memory leaks.
     """
     tehran_tz = pytz.timezone("Asia/Tehran")
     now_tehran = datetime.now(tehran_tz)
@@ -102,8 +103,23 @@ def execution_cycle() -> None:
             FILE_PATH.write_text(content, encoding="utf-8")
             logging.info(f"Report saved locally to {FILE_PATH.resolve()}")
             
-            # 2. Dispatch the text payload to Telegram
-            transmit_to_telegram(content)
+            # تهیه لیست کانال‌هایی که باید پیام ارسال شود
+            targets = []
+            if CHAT_ID_CURRENCYTEL:
+                targets.append(CHAT_ID_CURRENCYTEL)
+            if CHAT_ID_ZVTNI_TIMES:
+                targets.append(CHAT_ID_ZVTNI_TIMES)
+
+            if not targets:
+                logging.error("No Telegram Chat IDs configured in environment variables.")
+                return
+
+            # 2. Dispatch the text payload to each Telegram channel independently
+            for target in targets:
+                try:
+                    transmit_to_telegram(content, target)
+                except Exception as e:
+                    logging.error(f"Skipping sending to {target} due to error: {e}")
         else:
             logging.warning("No content generated; file write and Telegram transmission skipped.")       
     finally:
