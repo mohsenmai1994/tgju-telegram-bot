@@ -11,6 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="./style.css" />
+
+  
 </head>
 <body>
   <!-- Background Layers -->
@@ -59,11 +61,6 @@
         <span class="gradient-text">ارز، طلا و رمزارز</span>
       </h1>
 
-      <p>
-        نمایش حرفه‌ای و سریع نرخ‌های بازار الهام‌گرفته از رابط‌های کاربری صرافی‌های بین‌المللی.
-      </p>
-
-      <!-- اصلاح شده: ساختار آمار به حالت صحیح برگشت -->
       <div class="hero-stats">
         <div class="hero-stat">
           <strong id="heroUpdatedAt">--</strong>
@@ -127,7 +124,11 @@
     <!-- Promo Section -->
     <section class="promo">
       <!-- Telegram Channel -->
-      <a class="promo-card promo-telegram" href="https://t.me/CurrencyTel" target="_blank" rel="noopener noreferrer">
+      <a class="promo-card promo-telegram"
+         href="https://t.me/CurrencyTel"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-external="true">
         <div class="promo-icon">✈</div>
         <div class="promo-text">
           <strong>کانال تلگرام</strong>
@@ -137,7 +138,11 @@
       </a>
 
       <!-- Admin Support -->
-      <a class="promo-card promo-admin" href="https://t.me/CurrencyTel_Admin" target="_blank" rel="noopener noreferrer">
+      <a class="promo-card promo-admin"
+         href="https://t.me/CurrencyTel_Admin"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-external="true">
         <div class="promo-icon">⌁</div>
         <div class="promo-text">
           <strong>ارتباط با ادمین</strong>
@@ -147,7 +152,11 @@
       </a>
 
       <!-- Bot Subscription / Custom Bot -->
-      <a class="promo-card promo-bot" href="https://t.me/CurrencyTel_Admin" target="_blank" rel="noopener noreferrer">
+      <a class="promo-card promo-bot"
+         href="https://t.me/CurrencyTel_Admin"
+         target="_blank"
+         rel="noopener noreferrer"
+         data-external="true">
         <div class="promo-icon">🤖</div>
         <div class="promo-text">
           <strong>اشتراک ربات اختصاصی</strong>
@@ -165,10 +174,38 @@
       </p>
     </footer>
   </main>
+
   <script src="./config.js"></script>
   <script src="./app.js"></script>
+
+  <script>
+    // کمک برای باز شدن لینک‌های خارجی در موبایل و WebView
+    function openExternalLink(url) {
+      try {
+        // اگر در اپ اندروید، متد native وجود داشت
+        if (window.Android && typeof window.Android.openUrl === 'function') {
+          window.Android.openUrl(url);
+          return false;
+        }
+
+        // در مرورگر عادی
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return false;
+      } catch (e) {
+        // fallback نهایی
+        window.location.href = url;
+        return false;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('a[data-external="true"]').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          e.preventDefault();
+          openExternalLink(link.href);
+        });
+      });
+    });
+  </script>
 </body>
 </html>
-
-
-
