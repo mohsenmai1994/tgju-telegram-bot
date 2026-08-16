@@ -1,8 +1,12 @@
 const Config = window.APP_CONFIG || {};
 const AUTO_REFRESH_MS = 60000;
+const MOBILE_ANIMATION_WIDTH = 700;
 
 let allItems = [];
 let activeFilter = "all";
+let liveClockTimer = null;
+let autoRefreshTimer = null;
+let particleFrame = null;
 
 const loadingBox = document.getElementById("loadingBox");
 const errorBox = document.getElementById("errorBox");
@@ -287,7 +291,7 @@ function buildRawGithubUrl() {
   const path = Config.GITHUB_PATH;
 
   if (!owner || !repo || !path) {
-    throw new Error("GitHub config is incomplete.");
+    throw new Error("GitHub config is incomplet.");
   }
 
   return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
@@ -398,12 +402,24 @@ function setupTheme() {
   });
 }
 
+function shouldUseLightAnimations() {
+  return (
+    window.innerWidth <= MOBILE_ANIMATION_WIDTH ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 function createParticles() {
   const container = document.getElementById("bgParticles");
   if (!container) return;
 
+  if (shouldUseLightAnimations()) {
+    container.innerHTML = "";
+    return;
+  }
+
   container.innerHTML = "";
-  const count = window.innerWidth < 600 ? 18 : 28;
+  const count = 20;
 
   for (let i = 0; i < count; i += 1) {
     const p = document.createElement("span");
@@ -412,12 +428,22 @@ function createParticles() {
     p.style.width = `${size}px`;
     p.style.height = `${size}px`;
     p.style.left = `${Math.random() * 100}%`;
-    p.style.animationDuration = `${10 + Math.random() * 14}s`;
-    p.style.animationDelay = `${Math.random() * 8}s`;
-    p.style.opacity = (0.22 + Math.random() * 0.45).toFixed(2);
+    p.style.animationDuration = `${12 + Math.random() * 12}s`;
+    p.style.animationDelay = `${Math.random() * 6}s`;
+    p.style.opacity = (0.18 + Math.random() * 0.28).toFixed(2);
 
     container.appendChild(p);
   }
+}
+
+function scheduleParticleRefresh() {
+  if (particleFrame) {
+    cancelAnimationFrame(particleFrame);
+  }
+
+  particleFrame = requestAnimationFrame(() => {
+    createParticles();
+  });
 }
 
 function init() {
@@ -431,11 +457,12 @@ function init() {
     refreshBtn.addEventListener("click", () => fetchMarketData(false));
   }
 
-  window.addEventListener("resize", createParticles);
+  window.addEventListener("resize", scheduleParticleRefresh);
 
   fetchMarketData(true);
-  setInterval(updateLiveTime, 1000);
-  setInterval(() => fetchMarketData(false), AUTO_REFRESH_MS);
+
+  liveClockTimer = setInterval(updateLiveTime, 1000);
+  autoRefreshTimer = setInterval(() => fetchMarketData(false), AUTO_REFRESH_MS);
 }
 
 document.addEventListener("DOMContentLoaded", init);
