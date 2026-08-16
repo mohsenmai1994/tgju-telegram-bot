@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>داشبورد نرخ ارز، طلا و رمزارز</title>
+  <meta name="description" content="نمایش لحظه‌ای نرخ ارز، طلا، سکه و رمزارز با طراحی حرفه‌ای و مدرن" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- Background Layers -->
+  <div class="bg-layer">
+    <div class="aurora a1"></div>
+    <div class="aurora a2"></div>
+    <div class="aurora a3"></div>
+    <div class="grid-overlay"></div>
+    <div class="bg-particles" id="bgParticles"></div>
+  </div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-logo">₿</div>
+        <div>
+          <div class="brand-name">Currency Tel</div>
+          <div class="brand-sub">Live Rates Dashboard</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="topbar-status">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText">در حال اتصال...</span>
+        </div>
+
+        <button id="themeBtn" class="theme-btn" type="button" aria-label="تغییر تم">
+          <span id="themeIcon">☾</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        <span>Live Market Intelligence</span>
+      </div>
+
+      <h1>
+        داشبورد لحظه‌ای
+        <span class="gradient-text">ارز، طلا و رمزارز</span>
+      </h1>
+
+      <p>
+        نمایش حرفه‌ای و سریع نرخ‌های بازار الهام‌گرفته از رابط‌های کاربری صرافی‌های بین‌المللی.
+      </p>
+
+      <!-- اصلاح شده: ساختار آمار به حالت صحیح برگشت -->
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <strong id="heroUpdatedAt">--</strong>
+          <span>آخرین بروزرسانی</span>
+        </div>
+      </div>
+
+      <div class="ai-strip">
+        <div class="ai-chip"><span class="chip-dot"></span> داده زنده</div>
+        <div class="ai-chip"><span class="chip-dot"></span> به‌روزرسانی خودکار</div>
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <section class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input id="searchInput" type="text" placeholder="جستجو در بازار..." />
+      </div>
+
+      <div class="toolbar-actions">
+        <button class="control-btn active" data-filter="all" type="button">همه</button>
+        <button class="control-btn" data-filter="currency" type="button">ارز</button>
+        <button class="control-btn" data-filter="coin" type="button">سکه</button>
+        <button class="control-btn" data-filter="gold" type="button">طلا</button>
+        <button class="control-btn" data-filter="crypto" type="button">رمزارز</button>
+      </div>
+    </section>
+
+    <!-- Update bar -->
+    <section class="update-bar">
+      <div class="update-info">
+        <span class="update-label">آخرین بروزرسانی:</span>
+        <span id="updatedAt">--</span>
+      </div>
+
+      <button id="refreshBtn" class="refresh-btn" type="button" aria-label="بروزرسانی">
+        ⟳
+      </button>
+    </section>
+
+    <!-- Loading & Error States -->
+    <section id="loadingBox" class="loading">
+      <div class="spinner"></div>
+      <p>در حال دریافت داده‌های بازار...</p>
+    </section>
+
+    <section id="errorBox" class="error hidden">
+      <p id="errorText">خطا در دریافت اطلاعات بازار</p>
+    </section>
+
+    <!-- Data Sections -->
+    <section id="marketSections" class="market-sections hidden"></section>
+
+    <section id="emptyState" class="empty-state hidden">
+      <div class="empty-icon">◌</div>
+      <h3>موردی پیدا نشد</h3>
+      <p>نتیجه‌ای مطابق جستجو یا فیلتر انتخاب‌شده وجود ندارد.</p>
+    </section>
+
+    <!-- Promo Section -->
+    <section class="promo">
+      <!-- Telegram Channel -->
+      <a class="promo-card promo-telegram" href="https://t.me/CurrencyTel" target="_blank" rel="noopener noreferrer">
+        <div class="promo-icon">✈</div>
+        <div class="promo-text">
+          <strong>کانال تلگرام</strong>
+          <small>دریافت بروزرسانی‌ها و اطلاعات بازار</small>
+        </div>
+        <div class="promo-handle">@CurrencyTel</div>
+      </a>
+
+      <!-- Admin Support -->
+      <a class="promo-card promo-admin" href="https://t.me/CurrencyTel_Admin" target="_blank" rel="noopener noreferrer">
+        <div class="promo-icon">⌁</div>
+        <div class="promo-text">
+          <strong>ارتباط با ادمین</strong>
+          <small>تبلیغات، همکاری و پشتیبانی</small>
+        </div>
+        <div class="promo-handle">@CurrencyTel_Admin</div>
+      </a>
+
+      <!-- Bot Subscription / Custom Bot -->
+      <a class="promo-card promo-bot" href="https://t.me/CurrencyTel_Admin" target="_blank" rel="noopener noreferrer">
+        <div class="promo-icon">🤖</div>
+        <div class="promo-text">
+          <strong>اشتراک ربات اختصاصی</strong>
+          <small>سفارش و فعال‌سازی ربات ارسال خودکار قیمت برای کانال یا سایت شما</small>
+        </div>
+        <div class="promo-handle">سفارش از طریق ادمین</div>
+      </a>
+    </section>
+
+    <footer class="footer">
+      <p>Designed for high-clarity market monitoring</p>
+      <p class="footer-note">Smart automation for market updates — ارسال هوشمند قیمت به کانال، سایت و اپلیکیشن</p>
+      <p class="copyright">
+        © 2026 Currency Tel — تمامی حقوق محفوظ است
+      </p>
+    </footer>
+  </main>
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
+
+
+
