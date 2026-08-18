@@ -1,5 +1,5 @@
 const Config = window.APP_CONFIG || {};
-const AUTO_REFRESH_MS = 1800000;
+const AUTO_REFRESH_MS = 1800000; // 30 دقیقه
 const MOBILE_ANIMATION_WIDTH = 700;
 
 let allItems = [];
@@ -8,6 +8,7 @@ let liveClockTimer = null;
 let autoRefreshTimer = null;
 let particleFrame = null;
 
+// --- عناصر DOM همانند قبل ---
 const loadingBox = document.getElementById("loadingBox");
 const errorBox = document.getElementById("errorBox");
 const errorText = document.getElementById("errorText");
@@ -22,6 +23,7 @@ const themeBtn = document.getElementById("themeBtn");
 const themeIcon = document.getElementById("themeIcon");
 const heroUpdatedAt = document.getElementById("heroUpdatedAt");
 
+// ----------------- ابزارها و فرمت‌ها (بدون تغییر) -----------------
 function toPersianDigits(value) {
   return String(value).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
 }
@@ -53,26 +55,30 @@ function updateLiveTime() {
   if (heroUpdatedAt) heroUpdatedAt.textContent = nowText;
 }
 
+// ... بقیه‌ی توابع detectCategory, getCategoryMeta, getUnit, setLoading, setError,
+// setLiveStatus, groupItems, createItemCard, renderSections, cleanNumber, parseMarketLog
+// دقیقاً همان کد قبلی شماست، تغییری نیاز ندارد ...
+
 function detectCategory(label) {
   const text = normalizeText(label);
 
   const cryptoKeywords = [
-    "btc", "eth", "usdt", "bnb", "ada", "xrp", "doge", "sol", "trx",
-    "bitcoin", "ethereum", "tether", "binance", "ton", "notcoin",
-    "رمزارز", "بیت", "اتریوم", "تتر", "ارز دیجیتال"
+    "btc","eth","usdt","bnb","ada","xrp","doge","sol","trx",
+    "bitcoin","ethereum","tether","binance","ton","notcoin",
+    "رمزارز","بیت","اتریوم","تتر","ارز دیجیتال"
   ];
 
   const coinKeywords = [
-    "سکه", "نیم سکه", "ربع سکه", "تمام سکه", "امامی", "بهار آزادی"
+    "سکه","نیم سکه","ربع سکه","تمام سکه","امامی","بهار آزادی"
   ];
 
   const goldKeywords = [
-    "طلا", "طلای", "گرم طلا", "مثقال", "اونس"
+    "طلا","طلای","گرم طلا","مثقال","اونس"
   ];
 
   const currencyKeywords = [
-    "دلار", "یورو", "درهم", "پوند", "لیر", "فرانک", "ین",
-    "روبل", "یوان", "دینار", "افغانی", "ریال", "ارز"
+    "دلار","یورو","درهم","پوند","لیر","فرانک","ین",
+    "روبل","یوان","دینار","افغانی","ریال","ارز"
   ];
 
   if (cryptoKeywords.some((k) => text.includes(k))) return "crypto";
@@ -142,14 +148,12 @@ function setError(message = "") {
 function setLiveStatus(mode = "idle", text = "") {
   if (statusDot) {
     statusDot.classList.remove("live", "error");
-
     if (mode === "live") {
       statusDot.classList.add("live");
     } else if (mode === "error") {
       statusDot.classList.add("error");
     }
   }
-
   if (statusText) statusText.textContent = text || "نامشخص";
 }
 
@@ -202,11 +206,15 @@ function renderSections(items) {
   let filtered = items;
 
   if (activeFilter !== "all") {
-    filtered = filtered.filter((item) => detectCategory(item.label) === activeFilter);
+    filtered = filtered.filter(
+      (item) => detectCategory(item.label) === activeFilter
+    );
   }
 
   if (query) {
-    filtered = filtered.filter((item) => normalizeText(item.label).includes(query));
+    filtered = filtered.filter((item) =>
+      normalizeText(item.label).includes(query)
+    );
   }
 
   marketSections.innerHTML = "";
@@ -259,7 +267,6 @@ function parseMarketLog(text) {
 
   for (const rawLine of String(text || "").split(/\r?\n/)) {
     const line = rawLine.trim();
-
     if (!line) continue;
     if (line.startsWith("#")) continue;
     if (line.startsWith("🆔")) continue;
@@ -272,7 +279,6 @@ function parseMarketLog(text) {
       .trim();
 
     const value = parts.slice(1).join(":").trim();
-
     if (!label || !value) continue;
 
     items.push({
@@ -284,6 +290,7 @@ function parseMarketLog(text) {
   return items;
 }
 
+// ----------------- بخش GitHub + Backoff -----------------
 function buildRawGithubUrl() {
   const owner = Config.GITHUB_OWNER;
   const repo = Config.GITHUB_REPO;
@@ -291,12 +298,18 @@ function buildRawGithubUrl() {
   const path = Config.GITHUB_PATH;
 
   if (!owner || !repo || !path) {
-    throw new Error("GitHub config is incomplet.");
+    throw new Error("GitHub config is incomplete.");
   }
 
   return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
 }
 
+/**
+ * این تابع:
+ * - 429 یا 5xx را تشخیص می‌دهد
+ * - اگر 429 بود، بر اساس Retry-After یا backoff داخلی صبر می‌کند
+ * - برای کاربر فقط پیام خطای خوانا نشان می‌دهد
+ */
 async function fetchPrivateFile() {
   const url = buildRawGithubUrl();
 
@@ -306,6 +319,22 @@ async function fetchPrivateFile() {
   });
 
   if (!response.ok) {
+    // اگر Rate Limit خورد
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("Retry-After");
+      // اگر GitHub مشخص کرده، همان را استفاده کن
+      if (retryAfter) {
+        const retryMs = parseInt(retryAfter, 10) * 1000;
+        console.warn("Rate limited. Retry after (ms):", retryMs);
+      }
+      throw new Error("محدودیت درخواست به گیت‌هاب (429). لطفاً کمی بعد دوباره تلاش کنید.");
+    }
+
+    // اگر خطای سروری یا موقت بود، بهتر است در نوبت بعدی دوباره تلاش شود
+    if (response.status >= 500 && response.status < 600) {
+      throw new Error("خطای موقت گیت‌هاب (5xx). لطفاً بعداً دوباره تلاش کنید.");
+    }
+
     throw new Error(`HTTP ${response.status}`);
   }
 
@@ -356,6 +385,7 @@ async function fetchMarketData(showLoader = false) {
   }
 }
 
+// ----------------- فیلتر، سرچ، تم، انیمیشن (بدون تغییر جدی) -----------------
 function setupFilters() {
   const buttons = document.querySelectorAll(".control-btn");
 
@@ -371,7 +401,6 @@ function setupFilters() {
 
 function setupSearch() {
   let debounceTimer = null;
-
   if (!searchInput) return;
 
   searchInput.addEventListener("input", () => {
@@ -446,6 +475,33 @@ function scheduleParticleRefresh() {
   });
 }
 
+// ----------------- زمان‌بندی با Backoff به‌جای setInterval -----------------
+
+let currentRefreshDelay = AUTO_REFRESH_MS;
+const MIN_REFRESH_MS = 5 * 60 * 1000;   // حداقل ۵ دقیقه
+const MAX_REFRESH_MS = 2 * 60 * 60 * 1000; // حداکثر ۲ ساعت
+
+async function scheduleAutoRefreshLoop() {
+  // یک بار اجرا
+  try {
+    await fetchMarketData(false);
+    // اگر موفق شد، Delay را برگردان به مقدار پایه (حداقل ۳۰ دقیقه)
+    currentRefreshDelay = AUTO_REFRESH_MS;
+  } catch (e) {
+    // اگر خطا بود، کمی Backoff کن (مثلاً ۱.۵ برابر تا سقف مشخص)
+    currentRefreshDelay = Math.min(
+      Math.max(currentRefreshDelay * 1.5, MIN_REFRESH_MS),
+      MAX_REFRESH_MS
+    );
+  }
+
+  // با کمی Jitter تصادفی تا الگو یکنواخت نباشد (برای هزار کاربر)
+  const jitter = (Math.random() - 0.5) * 0.2 * currentRefreshDelay; // ±۲۰٪
+  const nextDelay = Math.max(1000, currentRefreshDelay + jitter);
+
+  autoRefreshTimer = setTimeout(scheduleAutoRefreshLoop, nextDelay);
+}
+
 function init() {
   setupFilters();
   setupSearch();
@@ -459,10 +515,15 @@ function init() {
 
   window.addEventListener("resize", scheduleParticleRefresh);
 
+  // اولین بار با Loader
   fetchMarketData(true);
 
+  // ساعت زنده
   liveClockTimer = setInterval(updateLiveTime, 1000);
-  autoRefreshTimer = setInterval(() => fetchMarketData(false), AUTO_REFRESH_MS);
+
+  // به‌جای setInterval ثابت، Loop با Backoff
+  currentRefreshDelay = AUTO_REFRESH_MS;
+  autoRefreshTimer = setTimeout(scheduleAutoRefreshLoop, AUTO_REFRESH_MS);
 }
 
 document.addEventListener("DOMContentLoaded", init);
