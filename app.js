@@ -1,5 +1,5 @@
 const Config = window.APP_CONFIG || {};
-const AUTO_REFRESH_MS = 60000;
+const AUTO_REFRESH_MS = 1800000;
 const MOBILE_ANIMATION_WIDTH = 700;
 
 let allItems = [];
