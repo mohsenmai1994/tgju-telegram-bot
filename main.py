@@ -29,7 +29,7 @@ BOT_TOKEN: Final[Optional[str]] = os.getenv("BOT_TOKEN")
 
 # دریافت آی‌دی‌ها با امکان Fallback به متغیر قدیمی CHAT_ID در صورت نیاز
 CHAT_ID_CURRENCYTEL: Final[Optional[str]] = "@CurrencyTel"
-CHAT_ID_ZVTNI_TIMES: Final[Optional[str]] = "@GoldCoinT"
+
 
 
 def normalize_chat_id(chat_id: str) -> str:
@@ -107,8 +107,6 @@ def execution_cycle() -> None:
             targets = []
             if CHAT_ID_CURRENCYTEL:
                 targets.append(CHAT_ID_CURRENCYTEL)
-            if CHAT_ID_ZVTNI_TIMES:
-                targets.append(CHAT_ID_ZVTNI_TIMES)
 
             if not targets:
                 logging.error("No Telegram Chat IDs configured in environment variables.")
