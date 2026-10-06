@@ -49,11 +49,11 @@ class TGJUScraper:
 
     def build_report(self) -> str:
         currencies: List[tuple[str, str]] = [
-            ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[2]/td[3]"),
-            ("☸️ پوند انگلیس", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[5]/td[3]"),
-            ("☸️ لیر ترکیه", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[4]/td[3]"),
+            ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[1]/td[3]"),
+            ("☸️ پوند انگلیس", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[4]/td[3]"),
+            ("☸️ لیر ترکیه", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[3]/td[3]"),
             ("☸️ فرانک سوئیس", "/html/body/main/section[2]/div/div[2]/table/tbody/tr[1]/td[3]"),
-            ("☸️ یوان چین", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[6]/td[3]")
+            ("☸️ یوان چین", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[5]/td[3]")
         ]
 
         coins: List[tuple[str, str]] = [
