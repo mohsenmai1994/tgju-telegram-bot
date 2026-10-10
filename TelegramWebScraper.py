@@ -49,11 +49,12 @@ class TGJUScraper:
 
     def build_report(self) -> str:
         currencies: List[tuple[str, str]] = [
-            ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[1]/td[3]"),
-            ("☸️ پوند انگلیس", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[4]/td[3]"),
-            ("☸️ لیر ترکیه", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[3]/td[3]"),
+            ("☸️ "دلار آمریکا", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[1]/td[3]"),
+            ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[2]/td[3]"),
+            ("☸️ پوند انگلیس", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[5]/td[3]"),
+            ("☸️ لیر ترکیه", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[4]/td[3]"),
             ("☸️ فرانک سوئیس", "/html/body/main/section[2]/div/div[2]/table/tbody/tr[1]/td[3]"),
-            ("☸️ یوان چین", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[5]/td[3]")
+            ("☸️ یوان چین", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[6]/td[3]")
         ]
 
         coins: List[tuple[str, str]] = [
@@ -90,9 +91,6 @@ class TGJUScraper:
 
         tether_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[1]/td[2]/span[1]")
         lines.append(f"✴️ تتر : {tether_val}")
-
-        # اضافه کردن دلار آمریکا با قیمت تتر، قبل از یورو
-        lines.insert(1, f"☸️ دلار آمریکا: {tether_val}")
 
         lines.append(f"\n🆔 {self.CHANNEL_HANDLE}")
 
