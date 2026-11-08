@@ -65,7 +65,7 @@ class TGJUScraper:
 
         golds: List[tuple[str, str, str]] = [
             ("✴️ انس طلا", "/html/body/main/div/section[1]/a[1]/span[2]", ""),
-            ("✴️ طلای 18 عیار", "/html/body/main/div/section[1]/a[3]/span[2]", "")
+            ("✴️ طلای 18 عیار", "/html/body/main/div/section[1]/a[3]/span[2]", ""),
             ("✴️ نفت برنت", "/html/body/main/div/div[4]/div[1]/div[2]/div[2]/div[2]/a[1]/span[2]", "")
         ]
 
