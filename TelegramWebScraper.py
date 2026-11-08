@@ -48,24 +48,25 @@ class TGJUScraper:
             return "-"
 
     def build_report(self) -> str:
-        currencies: List[tuple[str, str]] = [
-            ("☸️ دلار آمریکا", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[1]/td[3]"),
-            ("☸️ یورو", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[2]/td[3]"),
-            ("☸️ پوند انگلیس", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[5]/td[3]"),
-            ("☸️ لیر ترکیه", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[4]/td[3]"),
-            ("☸️ فرانک سوئیس", "/html/body/main/section[2]/div/div[2]/table/tbody/tr[1]/td[3]"),
-            ("☸️ یوان چین", "/html/body/main/section[2]/div/div[1]/table/tbody/tr[6]/td[3]")
+       currencies: List[tuple[str, str]] = [
+            ("☸️ دلار آمریکا", "/html/body/main/div/div[2]/div/section[1]/div[2]/table/tbody/tr[1]/td[1]/b"),
+            ("☸️ یورو", "/html/body/main/div/div[2]/div/section[1]/div[2]/table/tbody/tr[2]/td[1]/b"),
+            ("☸️ پوند انگلیس", "/html/body/main/div/div[2]/div/section[1]/div[2]/table/tbody/tr[3]/td[1]/b"),
+            ("☸️ لیر ترکیه", "/html/body/main/div/div[2]/div/section[1]/div[2]/table/tbody/tr[5]/td[1]/b"),
+            ("☸️ فرانک سوئیس", "/html/body/main/div/div[2]/div/section[1]/div[2]/table/tbody/tr[24]/td[1]/b"),
+            ("☸️ یوان چین", "/html/body/main/div/div[2]/div/section[1]/div[2]/table/tbody/tr[7]/td[1]/b")
         ]
 
         coins: List[tuple[str, str]] = [
-            ("✴️ سکه بهار آزادی", "/html/body/main/section[1]/table/tbody/tr[4]/td[2]"),
-            ("✴️ نیم سکه", "/html/body/main/section[1]/table/tbody/tr[5]/td[3]"),
-            ("✴️ ربع سکه", "/html/body/main/section[1]/table/tbody/tr[6]/td[2]")
+            ("✴️ سکه بهار آزادی", "/html/body/main/div/section[3]/div[2]/a[3]/span[2]"),
+            ("✴️ نیم سکه", "/html/body/main/div/div[3]/div/div[1]/div[2]/div[2]/a[3]/span[2]"),
+            ("✴️ ربع سکه", "/html/body/main/div/section[3]/div[2]/a[1]/span[2]")
         ]
 
         golds: List[tuple[str, str, str]] = [
-            ("✴️ انس طلا", "/html/body/main/section/table/tbody/tr[8]/td[2]", ""),
-            ("✴️ طلای 18 عیار", "/html/body/main/section[1]/table/tbody/tr[2]/td[2]", "")
+            ("✴️ انس طلا", "/html/body/main/div/section[1]/a[1]/span[2]", ""),
+            ("✴️ طلای 18 عیار", "/html/body/main/div/section[1]/a[3]/span[2]", "")
+            ("✴️ نفت برنت", "/html/body/main/div/div[4]/div[1]/div[2]/div[2]/div[2]/a[1]/span[2]", "")
         ]
 
         lines: list[str] = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین \n"]
@@ -74,7 +75,7 @@ class TGJUScraper:
             val = self.get_value(xpath)
             lines.append(f"{label}: {val}")
 
-        self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[3]").click()
+        self.driver.find_element(By.XPATH, "/html/body/header/div/a").click()
 
         for label, xpath in coins:
             val = self.get_value(xpath)
@@ -84,12 +85,10 @@ class TGJUScraper:
             val = self.get_value(xpath)
             lines.append(f"{label}: {val} {unit}")
 
-        self.driver.find_element(By.XPATH, "/html/body/header/div/div/div[1]/nav/a[2]").click()
-
-        btc_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[2]/td[3]/span[3]")
+        btc_val = self.get_value("/html/body/main/div/section[1]/a[8]/span[2]")
         lines.append(f"✴️ بیت کوین: {btc_val} دلار")
 
-        tether_val = self.get_value("/html/body/main/div/div/div/table/tbody/tr[1]/td[2]/span[1]")
+        tether_val = self.get_value("/html/body/main/div/section[3]/div[2]/a[5]/span[2]")
         lines.append(f"✴️ تتر : {tether_val}")
 
         lines.append(f"\n🆔 {self.CHANNEL_HANDLE}")
