@@ -190,10 +190,19 @@ class AlanChandScraper:
         return report
 
 
+class TGJUScraper(AlanChandScraper):
+    """Backward-compatible public class used by the existing main.py."""
+
+    TARGET_URL: Final[str] = BASE_URL + "/en/currencies-price"
+    BASE_DIR: Final[Path] = Path(__file__).resolve().parent
+    FILE_PATH: Final[Path] = FILE_PATH
+    CHANNEL_HANDLE: Final[str] = CHANNEL_HANDLE
+
+
 def main() -> None:
     driver = __webdriver__()
     try:
-        print(AlanChandScraper(driver).run())
+        print(TGJUScraper(driver).run())
     except (RuntimeError, WebDriverException):
         logger.exception("Scraping failed. The previous report has been preserved.")
         raise
