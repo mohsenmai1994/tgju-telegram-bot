@@ -184,11 +184,21 @@ class AlanChandScraper:
         return results
 
     def detail(self, quote: Quote) -> Decimal | None:
-        """Fallback for items whose list cards did not contain a readable price."""
+        """Extract the *sell* quote from the asset detail page, never the buy quote.
+
+        Currency detail pages no longer have a standalone "Swiss Franc" heading
+        adjacent to the value. They show "Sell rate for CHF to IRR" followed by
+        "3,246,000 IRR".  The old exact-name parser skipped that value.
+        """
         try:
-            lines = [x.strip() for x in self.driver.find_element(By.TAG_NAME, "main").text.splitlines() if x.strip()]
+            lines = [
+                x.strip()
+                for x in self.driver.find_element(By.TAG_NAME, "main").text.splitlines()
+                if x.strip()
+            ]
         except WebDriverException:
             return None
+
         if quote.path.endswith("/btc"):
             content = " ".join(lines[:70])
             match = re.search(r"Price\s*\(USD\)\s*\$?\s*(" + NUM + ")", content, re.I)
@@ -196,19 +206,45 @@ class AlanChandScraper:
                 amount = Decimal(match.group(1).replace(",", ""))
                 return amount if acceptable(amount, quote) else None
             return None
+
+        # Explicitly target the SELL price, as the same page also has a BUY
+        # price, daily highs/lows, percentages and a currency converter.
+        if quote.section == "/en/currencies-price":
+            symbol = quote.path.rsplit("/", 1)[-1].upper()
+            sell_heading = re.compile(
+                rf"\bSell\s+(?:rate|price)\s+for\s+{re.escape(symbol)}\s+to\s+IRR\b",
+                re.I,
+            )
+            price_line = re.compile(r"^\s*(" + NUM + r")\s*(?:IRR|Rials?)?\s*$", re.I)
+            for i, line in enumerate(lines):
+                if not sell_heading.search(line):
+                    continue
+                # Value appears directly after the sell heading; never scan
+                # into the following 'Buy rate' section.
+                for candidate in lines[i + 1 : i + 6]:
+                    if re.search(r"\bBuy\s+(?:rate|price)\b", candidate, re.I):
+                        break
+                    match = price_line.fullmatch(candidate)
+                    if not match:
+                        continue
+                    amount = Decimal(match.group(1).replace(",", ""))
+                    if acceptable(amount, quote):
+                        return amount / 10  # IRR -> Toman
+                logger.warning("Sell price not found after heading: %s", quote.label)
+                return None
+
+        # Gold, coins, Brent, and fallback for non-standard detail layouts:
+        # take only a numeric line immediately after an exact asset name.
         heading = quote.heading.casefold()
         for i, line in enumerate(lines):
             if line.casefold() != heading:
                 continue
-            # Current detail pages: exact item heading then price on the next line.
-            for after in lines[i + 1:i + 4]:
+            for after in lines[i + 1 : i + 4]:
                 if not re.match(r"^\s*[\d۰-۹٠-٩]", after):
                     continue
                 value = price_in_text(after, quote)
                 if acceptable(value, quote):
                     return value / 10 if quote.in_rials else value
-            # The breadcrumb can repeat the exact name before the real h2.
-            # Keep scanning until the heading immediately preceding the price.
         return None
 
     def build_report(self) -> str:
@@ -216,6 +252,21 @@ class AlanChandScraper:
         if self.visit("/en"):
             found.update(self.collect(Q))
             logger.info("Homepage: %s/%s prices retrieved", len(found), len(Q))
+
+        # When only 1-2 prices are missing, directly visit their detail pages.
+        # On GitHub runners the currency *listing* intermittently times out;
+        # visiting it first only wastes 12 seconds and does not help CHF.
+        attempted_detail: set[str] = set()
+        initially_missing = [q for q in Q if q.path not in found]
+        if 0 < len(initially_missing) <= 2:
+            for quote in initially_missing:
+                attempted_detail.add(quote.path)
+                logger.info("Checking individual price page: %s", quote.path)
+                if self.visit(quote.path):
+                    value = self.detail(quote)
+                    if acceptable(value * 10 if quote.in_rials and value is not None else value, quote):
+                        found[quote.path] = value
+                        logger.info("Recovered %s from detail page", quote.label)
 
         # Never visit /en/energy: on some runners it returns an empty page.
         # Brent is on the homepage; if absent, visit its *detail* page directly.
@@ -228,7 +279,7 @@ class AlanChandScraper:
                 found.update(self.collect(needed))
 
         for quote in Q:
-            if quote.path in found:
+            if quote.path in found or quote.path in attempted_detail:
                 continue
             logger.info("Checking individual price page: %s", quote.path)
             if self.visit(quote.path):
