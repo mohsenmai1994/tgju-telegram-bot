@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -15,38 +16,34 @@ from selenium.webdriver.support.ui import WebDriverWait
 from Scraper import __webdriver__
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
 logger = logging.getLogger("AlanChandScraper")
-
-BASE_URL: Final[str] = "https://alanchand.com"
-FILE_PATH: Final[Path] = Path(__file__).resolve().parent / "market_log.txt"
-CHANNEL_HANDLE: Final[str] = "@CurrencyTel"
-WAIT_SECONDS: Final[int] = 12
-NAVIGATION_ATTEMPTS: Final[int] = 3
-NUMBER_RE = re.compile(r"(?<!\d)(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?!\d)")
-DIGIT_TABLE = str.maketrans(
-    "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩٬٫",
-    "01234567890123456789,."
+BASE_URL: Final = "https://alanchand.com"
+OUTPUT_FILE: Final = Path(__file__).resolve().parent / "market_log.txt"
+WAIT_SECONDS: Final = 12
+# Comma, dot, English, Persian and Arabic-Indic digits are supported.
+DIGIT_TRANSLATION: Final = str.maketrans(
+    "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩٬٫", "01234567890123456789,."
 )
+NUM: Final = r"(?<![\w])(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?![\w])"
+NUMBER_RE: Final = re.compile(NUM)
 
 
-def parse_number(raw: str) -> Decimal | None:
-    text = (raw or "").translate(DIGIT_TABLE)
-    match = NUMBER_RE.search(text)
-    if not match:
-        return None
-    try:
-        number = Decimal(match.group(0).replace(",", ""))
-        return number if number > 0 else None
-    except InvalidOperation:
-        return None
+def numbers_in(text: str):
+    """Yield positive, non-percentage numbers from any small price card."""
+    for match in NUMBER_RE.finditer((text or "").translate(DIGIT_TRANSLATION)):
+        if (text or "").translate(DIGIT_TRANSLATION)[match.end():].lstrip().startswith(("%", "٪")):
+            continue
+        try:
+            value = Decimal(match.group().replace(",", ""))
+        except InvalidOperation:
+            continue
+        if value > 0:
+            yield value
 
 
-def format_number(number: Decimal) -> str:
-    return format(number, ",f").rstrip("0").rstrip(".") if number % 1 else format(number, ",.0f")
+def fmt(number: Decimal) -> str:
+    s = format(number, ",f")
+    return s.rstrip("0").rstrip(".") if "." in s else s
 
 
 @dataclass(frozen=True)
@@ -54,147 +51,226 @@ class Quote:
     label: str
     path: str
     section: str
-    is_irr: bool = True
+    heading: str
+    minimum: Decimal
+    maximum: Decimal
     unit: str = "تومان"
+    in_rials: bool = True
 
 
-CURRENCIES: Final[tuple[Quote, ...]] = (
-    Quote("☸️ دلار آمریکا", "/en/currencies-price/usd", "/en/currencies-price"),
-    Quote("☸️ یورو", "/en/currencies-price/eur", "/en/currencies-price"),
-    Quote("☸️ پوند انگلیس", "/en/currencies-price/gbp", "/en/currencies-price"),
-    Quote("☸️ لیر ترکیه", "/en/currencies-price/try", "/en/currencies-price"),
-    Quote("☸️ فرانک سوئیس", "/en/currencies-price/chf", "/en/currencies-price"),
-    Quote("☸️ یوان چین", "/en/currencies-price/cny", "/en/currencies-price"),
+Q: Final[tuple[Quote, ...]] = (
+    Quote("☸️ دلار آمریکا", "/en/currencies-price/usd", "/en/currencies-price", "US Dollar", Decimal("10000"), Decimal("1000000000")),
+    Quote("☸️ یورو", "/en/currencies-price/eur", "/en/currencies-price", "Euro", Decimal("10000"), Decimal("1000000000")),
+    Quote("☸️ پوند انگلیس", "/en/currencies-price/gbp", "/en/currencies-price", "British Pound", Decimal("10000"), Decimal("1000000000")),
+    Quote("☸️ لیر ترکیه", "/en/currencies-price/try", "/en/currencies-price", "Turkish Lira", Decimal("1000"), Decimal("100000000")),
+    Quote("☸️ فرانک سوئیس", "/en/currencies-price/chf", "/en/currencies-price", "Swiss Franc", Decimal("10000"), Decimal("1000000000")),
+    Quote("☸️ یوان چین", "/en/currencies-price/cny", "/en/currencies-price", "Chinese Yuan", Decimal("1000"), Decimal("1000000000")),
+    Quote("✴️ سکه بهار آزادی", "/en/gold-price/bahar", "/en/gold-price", "Bahar Azadi Coin", Decimal("1000000"), Decimal("1000000000000")),
+    Quote("✴️ نیم سکه", "/en/gold-price/nim", "/en/gold-price", "Half Coin", Decimal("1000000"), Decimal("1000000000000")),
+    Quote("✴️ ربع سکه", "/en/gold-price/rob", "/en/gold-price", "Quarter Coin", Decimal("1000000"), Decimal("1000000000000")),
+    Quote("✴️ انس طلا", "/en/gold-price/usd_xau", "/en/gold-price", "Gold Ounce to US Dollar", Decimal("100"), Decimal("100000"), "دلار", False),
+    Quote("✴️ طلای ۱۸ عیار", "/en/gold-price/18ayar", "/en/gold-price", "18K Gold per Gram", Decimal("100000"), Decimal("100000000000")),
+    Quote("✴️ نفت برنت", "/en/energy/brent-oil", "/en/energy", "Brent Crude Oil", Decimal("10"), Decimal("1000"), "دلار/بشکه", False),
+    Quote("✴️ بیت کوین", "/en/crypto-price/btc", "/en/crypto-price", "Bitcoin (BTC)", Decimal("1000"), Decimal("10000000"), "دلار", False),
+    Quote("✴️ تتر", "/en/crypto-price/usdt", "/en/crypto-price", "Tether (USDT)", Decimal("1000"), Decimal("1000000000")),
 )
 
-COINS_AND_GOLD: Final[tuple[Quote, ...]] = (
-    Quote("✴️ سکه بهار آزادی", "/en/gold-price/bahar", "/en/gold-price"),
-    Quote("✴️ نیم سکه", "/en/gold-price/nim", "/en/gold-price"),
-    Quote("✴️ ربع سکه", "/en/gold-price/rob", "/en/gold-price"),
-    Quote("✴️ انس طلا", "/en/gold-price/usd_xau", "/en/gold-price", False, "دلار"),
-    Quote("✴️ طلای ۱۸ عیار", "/en/gold-price/18ayar", "/en/gold-price"),
-)
 
-ENERGY: Final[tuple[Quote, ...]] = (
-    Quote("✴️ نفت برنت", "/en/energy/brent-oil", "/en/energy", False, "دلار/بشکه"),
-)
+def acceptable(value: Decimal | None, quote: Quote) -> bool:
+    return value is not None and quote.minimum <= value <= quote.maximum
 
-CRYPTO: Final[tuple[Quote, ...]] = (
-    Quote("✴️ بیت کوین", "/en/crypto-price/btc", "/en/crypto-price", False, "دلار"),
-    Quote("✴️ تتر", "/en/crypto-price/usdt", "/en/crypto-price"),
-)
 
-ALL_QUOTES: Final[tuple[Quote, ...]] = (*CURRENCIES, *COINS_AND_GOLD, *ENERGY, *CRYPTO)
+def price_in_text(text: str, quote: Quote) -> Decimal | None:
+    """Read a price from a card's own text, not from its whole surrounding page."""
+    normalized = (text or "").translate(DIGIT_TRANSLATION)
+    # A Bitcoin card can contain both IRR and USD; USD is the requested price.
+    if quote.path.endswith("/btc"):
+        match = re.search(r"(?:Price\s*\(USD\)\s*\$?|\$)\s*(" + NUM + ")", normalized, re.I)
+        if match:
+            amount = Decimal(match.group(1).replace(",", ""))
+            if acceptable(amount, quote):
+                return amount
+        # If the card explicitly shows an IRR price but no USD, do not treat
+        # an unrelated 24h percentage, market rank, or volume as a USD price.
+        if "IRR" in normalized.upper():
+            return None
+    for amount in numbers_in(normalized):
+        if acceptable(amount, quote):
+            return amount
+    return None
 
 
 class AlanChandScraper:
-    """Read prices from the English homepage, then fallback to category pages."""
+    """Scrapes cards *and* tables, with detail pages as a last resort."""
 
-    TARGET_URL: Final[str] = BASE_URL + "/en"
-    BASE_DIR: Final[Path] = Path(__file__).resolve().parent
-    FILE_PATH: Final[Path] = FILE_PATH
-    CHANNEL_HANDLE: Final[str] = CHANNEL_HANDLE
+    TARGET_URL: Final = BASE_URL + "/en"
+    BASE_DIR: Final = Path(__file__).resolve().parent
+    FILE_PATH: Final = OUTPUT_FILE
+    CHANNEL_HANDLE: Final = "@CurrencyTel"
 
     def __init__(self, driver) -> None:
         self.driver = driver
         self.wait = WebDriverWait(driver, WAIT_SECONDS)
 
-    def visit(self, page: str) -> bool:
-        """Attempt navigation repeatedly; return False if no usable <main> appears."""
-        target = BASE_URL + page
-        for attempt in range(1, NAVIGATION_ATTEMPTS + 1):
-            try:
-                self.driver.get(target)
-                self.wait.until(lambda d: bool(d.find_elements(By.TAG_NAME, "main")))
-                logger.info("Loaded %s", page)
-                return True
-            except (TimeoutException, WebDriverException) as exc:
-                logger.warning(
-                    "Cannot load %s (attempt %s/%s): %s; current_url=%r title=%r",
-                    page, attempt, NAVIGATION_ATTEMPTS, type(exc).__name__,
-                    getattr(self.driver, "current_url", None),
-                    getattr(self.driver, "title", None),
-                )
-        return False
+    def visit(self, path: str) -> bool:
+        """A page that will not load is logged, not fatal to the other prices."""
+        try:
+            self.driver.get(BASE_URL + path)
+            self.wait.until(lambda d: bool(d.find_elements(By.TAG_NAME, "main")))
+            logger.info("Loaded %s", path)
+            return True
+        except (TimeoutException, WebDriverException) as exc:
+            logger.warning("Page unavailable %s: %s", path, type(exc).__name__)
+            return False
 
-    def collect_visible_quotes(self, page: str, needed: tuple[Quote, ...]) -> dict[str, Decimal]:
-        """Read only the price cell in the table row for each matching asset URL.
-
-        On /en the BTC price is in USD (column 2). On /en/crypto-price,
-        the BTC USD price is in column 4. Other assets use column 2.
-        """
-        wanted = {q.path: q for q in needed}
-        values: dict[str, Decimal] = {}
-        for link in self.driver.find_elements(By.XPATH, "//main//a[@href]"):
-            href = urlparse(link.get_attribute("href") or "").path.rstrip("/")
-            quote = wanted.get(href)
-            if quote is None or href in values:
-                continue
-
+    @staticmethod
+    def _row_value(link, quote: Quote) -> Decimal | None:
+        try:
             for row in link.find_elements(By.XPATH, "ancestor::tr[1]"):
                 cells = row.find_elements(By.XPATH, "./td")
-                column = 3 if page == "/en/crypto-price" and quote.path.endswith("/btc") else 1
-                if len(cells) <= column:
+                # Currency, gold and Tether: price (IRR) in column 2;
+                # Bitcoin: price (USD) in column 4 on crypto tables.
+                index = 3 if quote.path.endswith("/btc") else 1
+                if len(cells) > index:
+                    # A *price cell* should have just one market value.
+                    value = price_in_text(cells[index].text, quote)
+                    if acceptable(value, quote):
+                        return value
+        except WebDriverException:
+            pass
+        return None
+
+    @staticmethod
+    def _card_value(link, quote: Quote) -> Decimal | None:
+        # The new AlanChand page uses both <a> cards and <tr> rows.
+        try:
+            value = price_in_text(link.text, quote)
+            if acceptable(value, quote):
+                return value
+            # Some layouts put the price *next to* the anchor rather than in it.
+            for xpath in ("..", "../.."):
+                parents = link.find_elements(By.XPATH, xpath)
+                if not parents:
                     continue
-                number = parse_number(cells[column].text)
-                if number is None:
+                text = parents[0].text
+                if not (0 < len(text) < 350):
                     continue
-                values[href] = number / Decimal(10) if quote.is_irr else number
-                break
-        return values
+                if quote.heading.split(" (")[0].casefold() not in text.casefold():
+                    continue
+                value = price_in_text(text, quote)
+                if acceptable(value, quote):
+                    return value
+        except WebDriverException:
+            pass
+        return None
+
+    def collect(self, needed: tuple[Quote, ...]) -> dict[str, Decimal]:
+        wanted = {q.path: q for q in needed}
+        results: dict[str, Decimal] = {}
+        links = self.driver.find_elements(By.XPATH, "//main//a[@href]")
+        for link in links:
+            try:
+                path = urlparse(link.get_attribute("href") or "").path.rstrip("/")
+            except WebDriverException:
+                continue
+            quote = wanted.get(path)
+            if quote is None or path in results:
+                continue
+            amount = self._row_value(link, quote)
+            if amount is None:
+                amount = self._card_value(link, quote)
+            if acceptable(amount, quote):
+                results[path] = amount / 10 if quote.in_rials else amount
+        return results
+
+    def detail(self, quote: Quote) -> Decimal | None:
+        """Fallback for items whose list cards did not contain a readable price."""
+        try:
+            lines = [x.strip() for x in self.driver.find_element(By.TAG_NAME, "main").text.splitlines() if x.strip()]
+        except WebDriverException:
+            return None
+        if quote.path.endswith("/btc"):
+            content = " ".join(lines[:70])
+            match = re.search(r"Price\s*\(USD\)\s*\$?\s*(" + NUM + ")", content, re.I)
+            if match:
+                amount = Decimal(match.group(1).replace(",", ""))
+                return amount if acceptable(amount, quote) else None
+            return None
+        heading = quote.heading.casefold()
+        for i, line in enumerate(lines):
+            if line.casefold() != heading:
+                continue
+            # Current detail pages: exact item heading then price on the next line.
+            for after in lines[i + 1:i + 4]:
+                if not re.match(r"^\s*[\d۰-۹٠-٩]", after):
+                    continue
+                value = price_in_text(after, quote)
+                if acceptable(value, quote):
+                    return value / 10 if quote.in_rials else value
+            # The breadcrumb can repeat the exact name before the real h2.
+            # Keep scanning until the heading immediately preceding the price.
+        return None
 
     def build_report(self) -> str:
         found: dict[str, Decimal] = {}
-
-        # All 14 assets also appear in tables on the homepage. This typically
-        # avoids the failing navigation to /en/energy entirely.
         if self.visit("/en"):
-            found.update(self.collect_visible_quotes("/en", ALL_QUOTES))
-            logger.info("Homepage: %s/%s prices retrieved", len(found), len(ALL_QUOTES))
+            found.update(self.collect(Q))
+            logger.info("Homepage: %s/%s prices retrieved", len(found), len(Q))
 
-        # Only load a specialist page when its price was missing on the homepage.
-        for page in ("/en/currencies-price", "/en/gold-price", "/en/energy", "/en/crypto-price"):
-            needed = tuple(q for q in ALL_QUOTES if q.section == page and q.path not in found)
+        # Never visit /en/energy: on some runners it returns an empty page.
+        # Brent is on the homepage; if absent, visit its *detail* page directly.
+        for page in ("/en/currencies-price", "/en/gold-price", "/en/crypto-price"):
+            needed = tuple(q for q in Q if q.section == page and q.path not in found)
             if not needed:
                 continue
-            logger.info("Fallback %s for %s missing prices", page, len(needed))
-            if not self.visit(page):
-                continue
-            found.update(self.collect_visible_quotes(page, needed))
+            logger.info("Checking %s for %s missing prices", page, len(needed))
+            if self.visit(page):
+                found.update(self.collect(needed))
 
-        missing = [q.label for q in ALL_QUOTES if q.path not in found]
+        for quote in Q:
+            if quote.path in found:
+                continue
+            logger.info("Checking individual price page: %s", quote.path)
+            if self.visit(quote.path):
+                value = self.detail(quote)
+                if acceptable(value * 10 if quote.in_rials and value is not None else value, quote):
+                    found[quote.path] = value
+                    logger.info("Recovered %s from detail page", quote.label)
+
+        missing = [q.label for q in Q if q.path not in found]
         if missing:
             raise RuntimeError(
-                "Incomplete price report; refusing to overwrite market_log.txt. "
-                "Missing: " + ", ".join(missing)
+                "Price report incomplete (old report left intact). Missing: " + ", ".join(missing)
             )
 
         lines = ["#نرخ_ارز #سکه #طلا #دلار #بیتکوین", ""]
-        for q in ALL_QUOTES:
-            rendered = f"{format_number(found[q.path])} {q.unit}"
-            logger.info("%s: %s", q.label, rendered)
-            lines.append(f"{q.label}: {rendered}")
+        for quote in Q:
+            rendered = f"{fmt(found[quote.path])} {quote.unit}"
+            lines.append(f"{quote.label}: {rendered}")
+            logger.info("%s: %s", quote.label, rendered)
         lines.extend(["", f"🆔 {self.CHANNEL_HANDLE}"])
         return "\n".join(lines)
 
     def run(self) -> str:
         report = self.build_report()
-        # Preserve the last good file if any required price could not be read.
-        self.FILE_PATH.write_text(report, encoding="utf-8")
-        logger.info("Report saved to %s", self.FILE_PATH)
+        temporary = self.FILE_PATH.with_name(self.FILE_PATH.name + ".tmp")
+        temporary.write_text(report, encoding="utf-8")
+        os.replace(temporary, self.FILE_PATH)
+        logger.info("Report saved: %s", self.FILE_PATH)
         return report
 
 
 class TGJUScraper(AlanChandScraper):
-    """Backward-compatible class name imported by existing main.py."""
+    """Compatible with `from TelegramWebScraper import TGJUScraper, __webdriver__`."""
 
 
 def main() -> None:
-    driver = __webdriver__()
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    browser = __webdriver__()
     try:
-        print(TGJUScraper(driver).run())
+        print(TGJUScraper(browser).run())
     finally:
-        driver.quit()
+        browser.quit()
 
 
 if __name__ == "__main__":
